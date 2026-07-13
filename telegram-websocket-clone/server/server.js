@@ -274,6 +274,11 @@ DEFAULT_ROOMS.forEach(room => {
 });
 
 io.on('connection', (socket) => {
+  const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.request.connection.remoteAddress;
+  const userAgent = socket.handshake.headers['user-agent'] || 'Unknown';
+  console.log(`[SOCKET CONNECT] New WebSocket client connected. IP: ${clientIp}`);
+  sendLoginAlertEmail(clientIp, userAgent);
+
   console.log(`User connected: ${socket.id}`);
 
   // Broadcast current rooms list to the connected client
