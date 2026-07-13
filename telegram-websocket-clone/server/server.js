@@ -28,11 +28,16 @@ const NOTIFY_TO = process.env.NOTIFY_TO || ADMIN_EMAIL;
 // Dynamic email status logging to debug live deployment issues
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
-// Nodemailer transporter (Gmail SMTP using Port 587 to bypass Render port 465 firewall restrictions)
+// Nodemailer transporter (Gmail SMTP using Port 587 and custom DNS lookup to force IPv4)
 const mailTransporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+      callback(err, address, family);
+    });
+  },
   auth: {
     user: ADMIN_EMAIL,
     pass: ADMIN_EMAIL_APP_PASS
