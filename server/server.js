@@ -28,19 +28,24 @@ const NOTIFY_TO = process.env.NOTIFY_TO || ADMIN_EMAIL;
 // Dynamic email status logging to debug live deployment issues
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
-// Nodemailer transporter (Gmail SMTP using Port 587 and custom DNS lookup to force IPv4)
+// Gmail OAuth2 transporter (free HTTPS email sending)
+const { google } = require('googleapis');
+const OAuth2 = google.auth.OAuth2;
+const oauth2Client = new OAuth2(
+  process.env.GMAIL_CLIENT_ID,
+  process.env.GMAIL_CLIENT_SECRET,
+  'urn:ietf:wg:oauth:2.0:oob'
+);
+oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+
 const mailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-      callback(err, address, family);
-    });
-  },
+  service: 'gmail',
   auth: {
+    type: 'OAuth2',
     user: ADMIN_EMAIL,
-    pass: ADMIN_EMAIL_APP_PASS
+    clientId: process.env.GMAIL_CLIENT_ID,
+    clientSecret: process.env.GMAIL_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_REFRESH_TOKEN
   }
 });
 

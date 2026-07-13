@@ -11,6 +11,7 @@
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.3",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "googleapis": "^119.0.0"
   }
 }
