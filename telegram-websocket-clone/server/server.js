@@ -88,7 +88,8 @@ app.get('/api/email-status', (req, res) => {
     transporterConfig: {
       user: ADMIN_EMAIL,
       passConfigured: !!ADMIN_EMAIL_APP_PASS,
-      notifyTo: NOTIFY_TO
+      notifyTo: NOTIFY_TO,
+      customLookupConfigured: true
     },
     lastEmailStatus
   });
