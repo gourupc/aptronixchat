@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 
 const app = express();
 app.use(cors());
@@ -13,78 +13,100 @@ app.use(express.json());
 
 // =============================================================
 // ADMIN LOGIN ALERT CONFIG
-// Uses Gmail App Password (Google Account > Security >
-// 2-Step Verification > App Passwords)
-// Port 465 (SSL) is used — works on Render (port 587 is blocked)
+// Uses Gmail API over HTTPS (port 443) — the ONLY method that
+// works on Render (all SMTP ports 25/465/587 are blocked).
+// Set GMAIL_REFRESH_TOKEN in Render environment variables.
 // =============================================================
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
-const ADMIN_EMAIL_APP_PASS = process.env.ADMIN_EMAIL_APP_PASS || 'eubr cfap rhmh lvba';
-const NOTIFY_TO = process.env.NOTIFY_TO || ADMIN_EMAIL;
+const NOTIFY_TO   = process.env.NOTIFY_TO   || ADMIN_EMAIL;
+
+const GMAIL_CLIENT_ID     = process.env.GMAIL_CLIENT_ID     || '';
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || '';
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || '';
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
-// Gmail SMTP transporter using App Password on port 465 (SSL — not blocked by Render)
-const mailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // SSL
-  auth: {
-    user: ADMIN_EMAIL,
-    pass: ADMIN_EMAIL_APP_PASS
-  }
-});
+// Gmail OAuth2 client (communicates via HTTPS — never blocked by Render)
+const oauth2Client = new google.auth.OAuth2(
+  GMAIL_CLIENT_ID,
+  GMAIL_CLIENT_SECRET,
+  'urn:ietf:wg:oauth:2.0:oob'
+);
+oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
 
-// Send login alert email to admin on every successful login
+// Send login alert email via Gmail API on every successful login
 function sendLoginAlertEmail(ip, userAgent) {
+  if (!GMAIL_REFRESH_TOKEN) {
+    console.warn('[LOGIN ALERT] GMAIL_REFRESH_TOKEN not set — skipping email.');
+    lastEmailStatus = { status: 'skipped', error: 'GMAIL_REFRESH_TOKEN not configured', time: new Date().toISOString() };
+    return;
+  }
+
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const subject   = '=?UTF-8?B?' + Buffer.from('\uD83D\uDD10 Doremon Messenger - New Login Alert').toString('base64') + '?=';
+  const htmlBody  = `<div style="font-family:Arial,sans-serif;max-width:500px;padding:20px;border:1px solid #ddd;border-radius:10px;">
+    <h2 style="color:#2481cc;margin-top:0;">\uD83D\uDD10 New Login Detected</h2>
+    <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:15px;">
+      <tr><td style="padding:8px;font-weight:bold;color:#555;">Time</td><td style="padding:8px;">${timestamp}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;color:#555;">IP Address</td><td style="padding:8px;"><code>${ip}</code></td></tr>
+      <tr><td style="padding:8px;font-weight:bold;color:#555;">Browser</td><td style="padding:8px;font-size:0.85em;">${userAgent}</td></tr>
+    </table>
+    <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from Doremon Messenger.</p>
+  </div>`;
 
-  const mailOptions = {
-    from: `"Doremon Messenger" <${ADMIN_EMAIL}>`,
-    to: NOTIFY_TO,
-    subject: '\uD83D\uDD10 Doremon Messenger - New Login Alert',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <h2 style="color: #2481cc; margin-top: 0;">\uD83D\uDD10 New Login Detected</h2>
-        <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-          <tr><td style="padding: 8px; font-weight: bold; color: #555;">Time</td><td style="padding: 8px;">${timestamp}</td></tr>
-          <tr style="background: #f9f9f9;"><td style="padding: 8px; font-weight: bold; color: #555;">IP Address</td><td style="padding: 8px;"><code>${ip}</code></td></tr>
-          <tr><td style="padding: 8px; font-weight: bold; color: #555;">Browser</td><td style="padding: 8px; font-size: 0.85em;">${userAgent}</td></tr>
-        </table>
-        <p style="margin-top: 20px; font-size: 0.8em; color: #999;">This is an automated security alert from your Doremon Messenger server.</p>
-      </div>
-    `
-  };
+  // Build raw RFC-822 message and base64url-encode it
+  const raw = [
+    `From: Doremon Messenger <${ADMIN_EMAIL}>`,
+    `To: ${NOTIFY_TO}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+    '',
+    htmlBody
+  ].join('\r\n');
 
-  mailTransporter.sendMail(mailOptions, (err, info) => {
-    if (err) {
-      console.error('[LOGIN ALERT] Email send failed:', err.message);
-      lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
-    } else {
-      console.log('[LOGIN ALERT] Admin notified successfully:', info.messageId);
-      lastEmailStatus = { status: 'success', error: null, time: new Date().toISOString() };
+  const encoded = Buffer.from(raw)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  gmail.users.messages.send(
+    { userId: 'me', requestBody: { raw: encoded } },
+    (err, result) => {
+      if (err) {
+        console.error('[LOGIN ALERT] Email send failed:', err.message);
+        lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
+      } else {
+        console.log('[LOGIN ALERT] Email sent successfully. ID:', result.data.id);
+        lastEmailStatus = { status: 'success', error: null, time: new Date().toISOString() };
+      }
     }
-  });
+  );
 }
+
 
 // Basic health check endpoint
 app.get('/', (req, res) => {
   res.send({ status: 'ok', message: 'Telegram WebSocket Clone Server is running.' });
 });
 
-// Diagnostic endpoint — check email config and last send status
+// Diagnostic endpoint — check Gmail API config and last send status
 app.get('/api/email-status', (req, res) => {
   res.json({
     config: {
       from: ADMIN_EMAIL,
       to: NOTIFY_TO,
-      appPasswordConfigured: !!ADMIN_EMAIL_APP_PASS,
-      transport: 'smtp.gmail.com:465 (SSL)'
+      transport: 'Gmail API via HTTPS (port 443)',
+      refreshTokenConfigured: !!GMAIL_REFRESH_TOKEN
     },
     lastEmailStatus
   });
 });
+
 
 // --- File Attachment Setup ---
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
