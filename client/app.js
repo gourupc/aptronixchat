@@ -166,6 +166,8 @@ let isMicMuted = false;
 let isVideoPaused = false;
 
 let iceFailedTimeout = null;
+let currentFacingMode = 'user';
+
 
 // STUN Configuration
 const rtcConfig = {
@@ -1801,28 +1803,30 @@ toggleVideoBtn.addEventListener('click', toggleLocalVideo);
 // Camera switching logic for switching between front/back camera
 async function switchCamera() {
   if (!localStream || callType !== 'video') return;
-  if (videoInputDevices.length <= 1) return;
 
-  // Move to the next camera index
-  currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % videoInputDevices.length;
-  const nextDevice = videoInputDevices[currentVideoDeviceIndex];
-
-  console.log(`Switching camera to: ${nextDevice.label || nextDevice.deviceId}`);
+  // Toggle active facing mode
+  currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+  console.log(`Switching camera facingMode to: ${currentFacingMode}`);
+  logDiagnostic(`Switching camera: ${currentFacingMode}...`);
 
   try {
-    // Request new video stream with the specific camera deviceId
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: { deviceId: { exact: nextDevice.deviceId } }
-    });
-
-    const newVideoTrack = newStream.getVideoTracks()[0];
     const oldVideoTrack = localStream.getVideoTracks()[0];
-
-    // Remove and stop the old camera track
+    
+    // Stop the old camera track first to release camera lock on some Android browsers
     if (oldVideoTrack) {
       localStream.removeTrack(oldVideoTrack);
       oldVideoTrack.stop();
+    }
+
+    // Request new video stream with the updated facingMode constraint
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: { facingMode: currentFacingMode }
+    });
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+    if (!newVideoTrack) {
+      throw new Error("No video track found in the new camera stream.");
     }
     
     // Add new camera track to local stream
@@ -1839,11 +1843,32 @@ async function switchCamera() {
         await videoSender.replaceTrack(newVideoTrack);
       }
     }
+    logDiagnostic(`Switched to ${currentFacingMode} camera`);
   } catch (err) {
     console.error('Camera switch failed:', err);
-    alert('Could not switch to the next camera source.');
+    logDiagnostic('Camera switch failed.');
+    
+    // Try to fallback by recovering default camera
+    try {
+      const fallbackStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+      });
+      const newVideoTrack = fallbackStream.getVideoTracks()[0];
+      localStream.addTrack(newVideoTrack);
+      localVideo.srcObject = localStream;
+      if (peerConnection) {
+        const senders = peerConnection.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+        if (videoSender) await videoSender.replaceTrack(newVideoTrack);
+      }
+    } catch (e) {
+      console.error('Camera recovery failed:', e);
+    }
+    alert('Failed to switch camera source.');
   }
 }
+
 
 if (switchCameraBtn) {
   switchCameraBtn.addEventListener('click', switchCamera);
