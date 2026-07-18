@@ -488,6 +488,11 @@ io.on('connection', (socket) => {
       }
     }
 
+    // Ensure message history is initialized for this room on the fly
+    if (!messageHistory.has(room)) {
+      messageHistory.set(room, []);
+    }
+
     // Join new room
     socket.join(room);
     socket.join(`user:${username}`); // Join private channel room
@@ -512,7 +517,7 @@ io.on('connection', (socket) => {
       // Welcome message to the user who joined
       socket.emit('message', {
         id: `sys-${Date.now()}`,
-        username: 'Doremon Bot',
+        username: 'AetherAI Bot',
         text: `Welcome to ${room}, ${username}!`,
         timestamp: new Date().toISOString(),
         system: true
@@ -521,7 +526,7 @@ io.on('connection', (socket) => {
       // Broadcast to other users in the room
       socket.to(room).emit('message', {
         id: `sys-${Date.now()}`,
-        username: 'Doremon Bot',
+        username: 'AetherAI Bot',
         text: `${username} joined the chat`,
         timestamp: new Date().toISOString(),
         system: true
@@ -530,6 +535,7 @@ io.on('connection', (socket) => {
       // Send updated user list for this room
       sendRoomUsers(room);
     }
+
 
     // Send chat history for this room to the joining user
     const history = messageHistory.get(room) || [];
@@ -754,15 +760,20 @@ io.on('connection', (socket) => {
   });
 
   // Create Custom Room
-  socket.on('create-room', ({ room }) => {
+  socket.on('create-room', ({ room, isSecret }) => {
     if (!room) return;
     const trimmed = room.trim();
-    if (trimmed.length > 0 && !activeRooms.has(trimmed)) {
-      activeRooms.add(trimmed);
-      messageHistory.set(trimmed, []);
-      io.emit('rooms-list', Array.from(activeRooms));
+    if (trimmed.length > 0) {
+      if (!messageHistory.has(trimmed)) {
+        messageHistory.set(trimmed, []);
+      }
+      if (!isSecret && !activeRooms.has(trimmed)) {
+        activeRooms.add(trimmed);
+        io.emit('rooms-list', Array.from(activeRooms));
+      }
     }
   });
+
 
   // Delete Custom Room
   socket.on('delete-room', ({ room }) => {

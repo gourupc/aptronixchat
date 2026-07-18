@@ -738,41 +738,66 @@ function initializeSocket() {
   // Receive dynamic active channels list updates from the server
   socket.on('rooms-list', (rooms) => {
     roomsList.innerHTML = '';
-    rooms.forEach(room => {
+    
+    // Combine public server rooms with local storage code-joined rooms
+    const localCodeRooms = JSON.parse(localStorage.getItem('joined-code-rooms') || '[]');
+    const allRooms = [...rooms];
+    localCodeRooms.forEach(cr => {
+      if (!allRooms.includes(cr)) {
+        allRooms.push(cr);
+      }
+    });
+
+    allRooms.forEach(room => {
       const isLobby = room === 'AetherAIFree General';
-      const deleteButtonHTML = isLobby 
-        ? '' 
-        : `<button type="button" class="btn-room-delete delete-room-action" data-room="${room}" title="Delete Channel">
+      const isCodeRoom = room.startsWith('code-');
+      
+      let deleteButtonHTML = '';
+      if (isCodeRoom) {
+        // Leave button for code-based private room
+        deleteButtonHTML = `<button type="button" class="btn-room-delete leave-code-room-action" data-room="${room}" title="Leave Private Room" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;">
+             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+             </svg>
+           </button>`;
+      } else if (!isLobby) {
+        // Delete button for public custom channel
+        deleteButtonHTML = `<button type="button" class="btn-room-delete delete-room-action" data-room="${room}" title="Delete Channel">
              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
              </svg>
            </button>`;
+      }
 
       const li = document.createElement('li');
       li.className = `room-item ${room === currentRoom ? 'active' : ''}`;
       li.setAttribute('data-room', room);
+      
+      const displayName = isCodeRoom ? `Private: ${room.replace('code-', '')}` : room;
+      const icon = isCodeRoom ? '🔑' : '#';
+
       li.innerHTML = `
         <div class="room-item-left" style="display: flex; align-items: center; gap: 8px;">
-          <span class="room-icon">#</span>
-          <span class="room-name">${room}</span>
+          <span class="room-icon">${icon}</span>
+          <span class="room-name">${displayName}</span>
         </div>
         ${deleteButtonHTML}
       `;
       roomsList.appendChild(li);
     });
 
-    // Re-bind click event to channel lists items
+    // Re-bind click event to channel list items
     roomsList.querySelectorAll('.room-item').forEach(item => {
       item.addEventListener('click', (e) => {
-        // Prevent trigger if they click the delete trash button inside the item!
-        if (e.target.closest('.delete-room-action')) return;
+        // Prevent trigger if they click action buttons inside the item!
+        if (e.target.closest('.delete-room-action') || e.target.closest('.leave-code-room-action')) return;
         
         const room = item.getAttribute('data-room');
         switchChatRoom(room);
       });
     });
 
-    // Re-bind delete trash button clicks
+    // Re-bind delete public custom channel button clicks
     roomsList.querySelectorAll('.delete-room-action').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -783,7 +808,26 @@ function initializeSocket() {
         }
       });
     });
+
+    // Re-bind leave code-based private room button clicks
+    roomsList.querySelectorAll('.leave-code-room-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roomName = btn.getAttribute('data-room');
+        let localRooms = JSON.parse(localStorage.getItem('joined-code-rooms') || '[]');
+        localRooms = localRooms.filter(r => r !== roomName);
+        localStorage.setItem('joined-code-rooms', JSON.stringify(localRooms));
+        
+        if (currentRoom === roomName) {
+          switchChatRoom('AetherAIFree General');
+        } else {
+          // Re-render rooms list locally
+          if (socket) socket.emit('get-rooms');
+        }
+      });
+    });
   });
+
 
   // Force redirect if actively viewing a room that is deleted
   socket.on('force-lobby-redirect', ({ room }) => {
@@ -1925,3 +1969,60 @@ if (createRoomBtn) {
     }
   });
 }
+
+// --- Create Secret Code Room ---
+const createCodeRoomBtn = document.getElementById('create-code-room-btn');
+if (createCodeRoomBtn) {
+  createCodeRoomBtn.addEventListener('click', () => {
+    // Generate a random 6-digit room code
+    const code = Math.floor(100000 + Math.random() * 900000);
+    const roomName = `code-${code}`;
+    
+    if (socket) {
+      // Create secret room on the server (doesn't broadcast to other people's sidebar)
+      socket.emit('create-room', { room: roomName, isSecret: true });
+      
+      // Save it locally for the current user
+      let localRooms = JSON.parse(localStorage.getItem('joined-code-rooms') || '[]');
+      if (!localRooms.includes(roomName)) {
+        localRooms.push(roomName);
+        localStorage.setItem('joined-code-rooms', JSON.stringify(localRooms));
+      }
+      
+      alert(`🔑 Private Room Created!\n\nYour code is: ${code}\n\nShare this code with another user to let them join your private chat. Clicking OK will switch you into the room.`);
+      switchChatRoom(roomName);
+    }
+  });
+}
+
+// --- Join Secret Code Room ---
+const joinCodeRoomBtn = document.getElementById('join-code-room-btn');
+if (joinCodeRoomBtn) {
+  joinCodeRoomBtn.addEventListener('click', () => {
+    const input = prompt('Enter the secure 6-digit chat code:');
+    if (!input) return;
+    const code = input.trim();
+    if (code.length === 0) return;
+    
+    const roomName = `code-${code}`;
+    
+    // Save it locally for the current user
+    let localRooms = JSON.parse(localStorage.getItem('joined-code-rooms') || '[]');
+    if (!localRooms.includes(roomName)) {
+      localRooms.push(roomName);
+      localStorage.setItem('joined-code-rooms', JSON.stringify(localRooms));
+    }
+    
+    if (socket) {
+      // Join the room on the server
+      socket.emit('join-room', {
+        username: currentUsername,
+        room: roomName,
+        metadata: getClientMetadata()
+      });
+    }
+    
+    switchChatRoom(roomName);
+  });
+}
+
