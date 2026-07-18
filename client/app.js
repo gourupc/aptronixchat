@@ -167,6 +167,8 @@ let isVideoPaused = false;
 
 let iceFailedTimeout = null;
 let currentFacingMode = 'user';
+let publicRoomsCache = [];
+
 
 
 // STUN Configuration
@@ -878,11 +880,17 @@ function initializeSocket() {
 
   // Receive dynamic active channels list updates from the server
   socket.on('rooms-list', (rooms) => {
+    publicRoomsCache = rooms;
+    renderRoomsListUI();
+  });
+
+  // Helper function to render active public and private code-based rooms
+  function renderRoomsListUI() {
     roomsList.innerHTML = '';
     
     // Combine public server rooms with local storage code-joined rooms
     const localCodeRooms = JSON.parse(localStorage.getItem('joined-code-rooms') || '[]');
-    const allRooms = [...rooms];
+    const allRooms = [...publicRoomsCache];
     localCodeRooms.forEach(cr => {
       if (!allRooms.includes(cr)) {
         allRooms.push(cr);
@@ -959,15 +967,16 @@ function initializeSocket() {
         localRooms = localRooms.filter(r => r !== roomName);
         localStorage.setItem('joined-code-rooms', JSON.stringify(localRooms));
         
+        // Re-render rooms list locally immediately
+        renderRoomsListUI();
+
         if (currentRoom === roomName) {
           switchChatRoom('AetherAIFree General');
-        } else {
-          // Re-render rooms list locally
-          if (socket) socket.emit('get-rooms');
         }
       });
     });
-  });
+  }
+
 
 
   // Force redirect if actively viewing a room that is deleted
