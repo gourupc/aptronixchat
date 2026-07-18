@@ -631,19 +631,18 @@ function initializeSocket() {
   });
 
   socket.on('ice-candidate', async ({ candidate }) => {
-    if (peerConnection) {
-      if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (err) {
-          console.error('Error adding ICE candidate:', err);
-        }
-      } else {
-        console.log('Queuing ICE candidate (remote description not set yet)');
-        iceCandidatesQueue.push(candidate);
+    if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.error('Error adding ICE candidate:', err);
       }
+    } else {
+      console.log('Queuing ICE candidate (peer connection or remote description not ready)');
+      iceCandidatesQueue.push(candidate);
     }
   });
+
 
 
   socket.on('call-rejected', () => {
