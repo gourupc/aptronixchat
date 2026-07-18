@@ -465,7 +465,7 @@ const messageHistory = new Map();
 const MAX_HISTORY_PER_ROOM = 100;
 
 // Predefined channels/rooms
-const DEFAULT_ROOMS = ['AetherAIFree General', 'Tech Talk', 'Meme Zone', 'Project Updates'];
+const DEFAULT_ROOMS = ['AetherAIFree General'];
 const activeRooms = new Set(DEFAULT_ROOMS);
 
 // Initialize message history for default rooms
