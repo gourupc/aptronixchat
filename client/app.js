@@ -130,7 +130,12 @@ const callTimerDisp = document.getElementById('call-timer');
 
 const toggleMicBtn = document.getElementById('toggle-mic-btn');
 const toggleVideoBtn = document.getElementById('toggle-video-btn');
+const switchCameraBtn = document.getElementById('switch-camera-btn');
 const hangupCallBtn = document.getElementById('hangup-call-btn');
+
+let videoInputDevices = [];
+let currentVideoDeviceIndex = 0;
+
 
 const dialingSound = document.getElementById('dialing-sound');
 const ringtoneSound = document.getElementById('ringtone-sound');
@@ -1322,10 +1327,21 @@ async function initiateUserCall(toSocketId, peerName, type) {
     videoStreamsContainer.classList.remove('hidden');
     audioCallPlaceholder.classList.add('hidden');
     toggleVideoBtn.classList.remove('hidden');
+    
+    // Detect multiple video cameras (like front/back cameras on mobile devices)
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+      if (videoInputDevices.length > 1) {
+        switchCameraBtn.classList.remove('hidden');
+      } else {
+        switchCameraBtn.classList.add('hidden');
+      }
+    }).catch(e => console.warn('Video device discovery error:', e));
   } else {
     videoStreamsContainer.classList.add('hidden');
     audioCallPlaceholder.classList.remove('hidden');
     toggleVideoBtn.classList.add('hidden'); // Hide camera control in audio calls
+    switchCameraBtn.classList.add('hidden');
     
     activeCallPeerName.textContent = peerName;
     activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
@@ -1334,6 +1350,7 @@ async function initiateUserCall(toSocketId, peerName, type) {
   }
 
   try {
+
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: type === 'video'
@@ -1385,16 +1402,28 @@ async function acceptIncomingCall() {
     videoStreamsContainer.classList.remove('hidden');
     audioCallPlaceholder.classList.add('hidden');
     toggleVideoBtn.classList.remove('hidden');
+    
+    // Detect multiple video cameras (like front/back cameras on mobile devices)
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+      if (videoInputDevices.length > 1) {
+        switchCameraBtn.classList.remove('hidden');
+      } else {
+        switchCameraBtn.classList.add('hidden');
+      }
+    }).catch(e => console.warn('Video device discovery error:', e));
   } else {
     videoStreamsContainer.classList.add('hidden');
     audioCallPlaceholder.classList.remove('hidden');
     toggleVideoBtn.classList.add('hidden');
+    switchCameraBtn.classList.add('hidden');
     
     activeCallPeerName.textContent = peerName;
     activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
     activeCallAvatar.style.backgroundColor = getAvatarColor(peerName);
     activeCallStatus.textContent = 'Connecting...';
   }
+
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -1604,10 +1633,14 @@ function cleanupCallConnection() {
   // Hide Overlays
   incomingCallOverlay.classList.add('hidden');
   activeCallOverlay.classList.add('hidden');
+  switchCameraBtn.classList.add('hidden');
   
+  videoInputDevices = [];
+  currentVideoDeviceIndex = 0;
   activeCallTargetSocketId = null;
   callType = null;
 }
+
 
 // Call Timer Helpers
 function startCallTimer() {
@@ -1635,6 +1668,58 @@ declineCallBtn.addEventListener('click', declineIncomingCall);
 hangupCallBtn.addEventListener('click', stopUserCall);
 toggleMicBtn.addEventListener('click', toggleLocalMicrophone);
 toggleVideoBtn.addEventListener('click', toggleLocalVideo);
+
+// Camera switching logic for switching between front/back camera
+async function switchCamera() {
+  if (!localStream || callType !== 'video') return;
+  if (videoInputDevices.length <= 1) return;
+
+  // Move to the next camera index
+  currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % videoInputDevices.length;
+  const nextDevice = videoInputDevices[currentVideoDeviceIndex];
+
+  console.log(`Switching camera to: ${nextDevice.label || nextDevice.deviceId}`);
+
+  try {
+    // Request new video stream with the specific camera deviceId
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: { deviceId: { exact: nextDevice.deviceId } }
+    });
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+    const oldVideoTrack = localStream.getVideoTracks()[0];
+
+    // Remove and stop the old camera track
+    if (oldVideoTrack) {
+      localStream.removeTrack(oldVideoTrack);
+      oldVideoTrack.stop();
+    }
+    
+    // Add new camera track to local stream
+    localStream.addTrack(newVideoTrack);
+
+    // Swap source object for local video tag
+    localVideo.srcObject = localStream;
+
+    // replaceTrack WebRTC sender to update peer side stream in real time
+    if (peerConnection) {
+      const senders = peerConnection.getSenders();
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+      if (videoSender) {
+        await videoSender.replaceTrack(newVideoTrack);
+      }
+    }
+  } catch (err) {
+    console.error('Camera switch failed:', err);
+    alert('Could not switch to the next camera source.');
+  }
+}
+
+if (switchCameraBtn) {
+  switchCameraBtn.addEventListener('click', switchCamera);
+}
+
 
 // Event delegation on sidebar user list (handles clicking to chat, and voice/video calling)
 onlineUsersList.addEventListener('click', (e) => {
