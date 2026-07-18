@@ -1454,13 +1454,11 @@ async function acceptIncomingCall() {
   }
 
   try {
-    // Reset candidates queue for new incoming session
-    iceCandidatesQueue = [];
-
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: callType === 'video'
     });
+
 
 
     if (callType === 'video') {
