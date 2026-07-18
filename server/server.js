@@ -5,67 +5,63 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
-const dns = require('dns');
-
-// Force IPv4 — Render's network blocks IPv6 SMTP connections
-dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // =============================================================
-// ADMIN LOGIN ALERT EMAIL CONFIG
-// Uses Gmail App Password — no Google Cloud setup needed.
+// ADMIN LOGIN ALERT CONFIG
+// Uses Google Apps Script webhook to send real Gmail emails.
+// No SMTP, no OAuth setup — works perfectly on Render.
 // =============================================================
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
-const ADMIN_PASS  = process.env.ADMIN_EMAIL_APP_PASS || 'eubr cfap rhmh lvba';
-const NOTIFY_TO   = process.env.NOTIFY_TO || ADMIN_EMAIL;
+const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
+const NOTIFY_TO    = process.env.NOTIFY_TO   || ADMIN_EMAIL;
+const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
+  'https://script.google.com/macros/s/AKfycbyz-mwGL69DlCIsz6F85aV1Dlp_OeDSSj8cJHZzZXaxZ2ZuK1mNjdgk2Icx_pnkeg1xTA/exec';
+const SCRIPT_SECRET = 'doremon2024';
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
-// Gmail transporter — port 587 + STARTTLS + IPv4 forced above
-const mailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: ADMIN_EMAIL,
-    pass: ADMIN_PASS
-  },
-  tls: { rejectUnauthorized: false }
-});
-
-// Called on every successful login — sends alert email to admin
-function sendLoginAlertEmail(ip, userAgent) {
+// Send login alert email via Google Apps Script (HTTPS — never blocked by Render)
+async function sendLoginAlertEmail(ip, userAgent) {
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-  mailTransporter.sendMail({
-    from: `"Doremon Messenger" <${ADMIN_EMAIL}>`,
-    to: NOTIFY_TO,
-    subject: '\uD83D\uDD10 Doremon Messenger - New Login Alert',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:500px;padding:20px;border:1px solid #ddd;border-radius:10px;">
-        <h2 style="color:#2481cc;margin-top:0;">\uD83D\uDD10 New Login Detected</h2>
-        <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:15px;">
-          <tr><td style="padding:8px;font-weight:bold;color:#555;">Time</td><td style="padding:8px;">${timestamp}</td></tr>
-          <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;color:#555;">IP Address</td><td style="padding:8px;"><code>${ip}</code></td></tr>
-          <tr><td style="padding:8px;font-weight:bold;color:#555;">Browser</td><td style="padding:8px;font-size:0.85em;">${userAgent}</td></tr>
-        </table>
-        <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from Doremon Messenger.</p>
-      </div>`
-  }, (err, info) => {
-    if (err) {
-      console.error('[LOGIN ALERT] Email failed:', err.message);
-      lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
-    } else {
-      console.log('[LOGIN ALERT] Email sent:', info.messageId);
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:500px;padding:20px;border:1px solid #ddd;border-radius:10px;">
+      <h2 style="color:#2481cc;margin-top:0;">&#128272; New Login Detected</h2>
+      <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:15px;">
+        <tr><td style="padding:8px;font-weight:bold;color:#555;">Time</td><td style="padding:8px;">${timestamp}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;color:#555;">IP Address</td><td style="padding:8px;"><code>${ip}</code></td></tr>
+        <tr><td style="padding:8px;font-weight:bold;color:#555;">Browser</td><td style="padding:8px;font-size:0.85em;">${userAgent}</td></tr>
+      </table>
+      <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from Doremon Messenger.</p>
+    </div>`;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: SCRIPT_SECRET,
+        to: NOTIFY_TO,
+        subject: 'Doremon Messenger - New Login Alert',
+        html
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'sent') {
+      console.log('[LOGIN ALERT] Email sent via Gmail successfully.');
       lastEmailStatus = { status: 'success', error: null, time: new Date().toISOString() };
+    } else {
+      console.warn('[LOGIN ALERT] Script response:', data.status);
+      lastEmailStatus = { status: 'error', error: data.status, time: new Date().toISOString() };
     }
-  });
+  } catch (err) {
+    console.error('[LOGIN ALERT] Email failed:', err.message);
+    lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
+  }
 }
 
 // Basic health check
@@ -77,10 +73,9 @@ app.get('/', (req, res) => {
 app.get('/api/email-status', (req, res) => {
   res.json({
     config: {
-      from: ADMIN_EMAIL,
+      from: 'Gmail via Google Apps Script',
       to: NOTIFY_TO,
-      appPasswordConfigured: !!ADMIN_PASS,
-      transport: 'smtp.gmail.com:587 (STARTTLS + IPv4)'
+      scriptConfigured: !!SCRIPT_URL
     },
     lastEmailStatus
   });
