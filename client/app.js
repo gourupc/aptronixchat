@@ -602,14 +602,32 @@ function initializeSocket() {
   });
 
   // --- WebRTC Calling Socket Listeners ---
-  socket.on('incoming-call', ({ from, username, offer, type }) => {
+  socket.on('incoming-call', async ({ from, username, offer, type }) => {
     console.log(`Incoming ${type} call from ${username}`);
     
-    // Auto-reject if busy
+    // If already in a call with this user, handle this as a WebRTC renegotiation offer
+    if (peerConnection && activeCallTargetSocketId === from) {
+      console.log("Handling incoming WebRTC renegotiation offer.");
+      logDiagnostic("Renegotiating session...");
+      try {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('make-answer', { to: from, answer: answer });
+        logDiagnostic("Renegotiation complete.");
+      } catch (err) {
+        console.error("Renegotiation failed:", err);
+        logDiagnostic("Renegotiation failed.");
+      }
+      return;
+    }
+
+    // Auto-reject if busy with another call
     if (peerConnection || localStream) {
       socket.emit('reject-call', { to: from });
       return;
     }
+
 
     activeCallTargetSocketId = from;
     callType = type;
@@ -1869,12 +1887,22 @@ async function switchCamera() {
       if (videoSender) {
         await videoSender.replaceTrack(newVideoTrack);
       }
+      
+      // Force an SDP renegotiation to update hardware video encoder pipelines on mobile
+      try {
+        logDiagnostic("Renegotiating session...");
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('call-user', {
+          to: activeCallTargetSocketId,
+          offer: offer,
+          type: callType
+        });
+      } catch (negErr) {
+        console.warn("Failed to create renegotiation offer:", negErr);
+      }
     }
-    
-    // Notify remote peer to re-bind remote video elements and prevent freezing
-    if (socket && activeCallTargetSocketId) {
-      socket.emit('track-changed', { to: activeCallTargetSocketId });
-    }
+
     
     logDiagnostic(`Switched to ${currentFacingMode} camera`);
 
@@ -1926,10 +1954,22 @@ async function toggleVideoQuality() {
     await videoTrack.applyConstraints(constraints);
     console.log(`Video quality constraints applied. High Quality: ${isHighQuality}`);
     
-    // Notify remote peer to re-bind remote video elements and prevent freezing
-    if (socket && activeCallTargetSocketId) {
-      socket.emit('track-changed', { to: activeCallTargetSocketId });
+    // Force an SDP renegotiation to update hardware video encoder pipelines on mobile
+    if (peerConnection) {
+      try {
+        logDiagnostic("Renegotiating session...");
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('call-user', {
+          to: activeCallTargetSocketId,
+          offer: offer,
+          type: callType
+        });
+      } catch (negErr) {
+        console.warn("Failed to create renegotiation offer:", negErr);
+      }
     }
+
     
     if (isHighQuality) {
 
