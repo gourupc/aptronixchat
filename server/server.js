@@ -66,7 +66,7 @@ async function sendLoginAlertEmail(ip, userAgent) {
 
 // Basic health check
 app.get('/', (req, res) => {
-  res.send({ status: 'ok', message: 'Telegram WebSocket Clone Server is running.' });
+  res.send({ status: 'ok', message: 'AetherAIFree Server is running.' });
 });
 
 // Diagnostic endpoint
@@ -506,7 +506,7 @@ io.on('connection', (socket) => {
       if (!room.startsWith('dm:')) {
         io.to(room).emit('message', {
           id: `sys-${Date.now()}`,
-          username: 'Telegram Bot',
+          username: 'AetherAI Bot',
           text: `${username} left the chat`,
           timestamp: new Date().toISOString(),
           system: true
