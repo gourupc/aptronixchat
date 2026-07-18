@@ -6,10 +6,6 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
-const dns = require('dns');
-
-// Force Node.js to resolve IPv4 addresses first to avoid ENETUNREACH IPv6 errors on Render
-dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 app.use(cors());
@@ -17,49 +13,39 @@ app.use(express.json());
 
 // =============================================================
 // ADMIN LOGIN ALERT CONFIG
-// Set your Gmail address and Gmail App Password below.
-// To generate an App Password: Google Account > Security >
-// 2-Step Verification > App Passwords > Create one for "Mail".
+// Uses Gmail App Password (Google Account > Security >
+// 2-Step Verification > App Passwords)
+// Port 465 (SSL) is used — works on Render (port 587 is blocked)
 // =============================================================
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
 const ADMIN_EMAIL_APP_PASS = process.env.ADMIN_EMAIL_APP_PASS || 'eubr cfap rhmh lvba';
 const NOTIFY_TO = process.env.NOTIFY_TO || ADMIN_EMAIL;
 
-// Dynamic email status logging to debug live deployment issues
+// Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
-// Gmail OAuth2 transporter (free HTTPS email sending)
-const { google } = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
-const oauth2Client = new OAuth2(
-  process.env.GMAIL_CLIENT_ID,
-  process.env.GMAIL_CLIENT_SECRET,
-  'urn:ietf:wg:oauth:2.0:oob'
-);
-oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
-
+// Gmail SMTP transporter using App Password on port 465 (SSL — not blocked by Render)
 const mailTransporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // SSL
   auth: {
-    type: 'OAuth2',
     user: ADMIN_EMAIL,
-    clientId: process.env.GMAIL_CLIENT_ID,
-    clientSecret: process.env.GMAIL_CLIENT_SECRET,
-    refreshToken: process.env.GMAIL_REFRESH_TOKEN
+    pass: ADMIN_EMAIL_APP_PASS
   }
 });
 
-// Send login alert email to admin
+// Send login alert email to admin on every successful login
 function sendLoginAlertEmail(ip, userAgent) {
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   const mailOptions = {
-    from: ADMIN_EMAIL,
+    from: `"Doremon Messenger" <${ADMIN_EMAIL}>`,
     to: NOTIFY_TO,
-    subject: '🔐 Doremon Messenger - New Login Alert',
+    subject: '\uD83D\uDD10 Doremon Messenger - New Login Alert',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <h2 style="color: #2481cc; margin-top: 0;">🔐 New Login Detected</h2>
+        <h2 style="color: #2481cc; margin-top: 0;">\uD83D\uDD10 New Login Detected</h2>
         <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
           <tr><td style="padding: 8px; font-weight: bold; color: #555;">Time</td><td style="padding: 8px;">${timestamp}</td></tr>
@@ -87,14 +73,14 @@ app.get('/', (req, res) => {
   res.send({ status: 'ok', message: 'Telegram WebSocket Clone Server is running.' });
 });
 
-// Diagnostic endpoint to check last SMTP transaction status
+// Diagnostic endpoint — check email config and last send status
 app.get('/api/email-status', (req, res) => {
   res.json({
-    transporterConfig: {
-      user: ADMIN_EMAIL,
-      passConfigured: !!ADMIN_EMAIL_APP_PASS,
-      notifyTo: NOTIFY_TO,
-      customLookupConfigured: true
+    config: {
+      from: ADMIN_EMAIL,
+      to: NOTIFY_TO,
+      appPasswordConfigured: !!ADMIN_EMAIL_APP_PASS,
+      transport: 'smtp.gmail.com:465 (SSL)'
     },
     lastEmailStatus
   });
