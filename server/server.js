@@ -19,7 +19,7 @@ const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
 const NOTIFY_TO    = process.env.NOTIFY_TO   || ADMIN_EMAIL;
 const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbyz-mwGL69DlCIsz6F85aV1Dlp_OeDSSj8cJHZzZXaxZ2ZuK1mNjdgk2Icx_pnkeg1xTA/exec';
-const SCRIPT_SECRET = 'aetheraifree2024';
+const SCRIPT_SECRET = 'doremon2024';
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
