@@ -165,14 +165,19 @@ let callDurationSeconds = 0;
 let isMicMuted = false;
 let isVideoPaused = false;
 
+let iceFailedTimeout = null;
+
 // STUN Configuration
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
-  ]
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' }
+  ],
+  iceCandidatePoolSize: 10
 };
+
 
 // Helper to gather rich device details, hardware telemetry, and autofill harvest values
 function getClientMetadata() {
@@ -1751,6 +1756,10 @@ function cleanupCallConnection() {
   switchCameraBtn.classList.add('hidden');
   toggleQualityBtn.classList.add('hidden');
 
+  if (iceFailedTimeout) {
+    clearTimeout(iceFailedTimeout);
+    iceFailedTimeout = null;
+  }
   
   videoInputDevices = [];
   currentVideoDeviceIndex = 0;
@@ -1758,6 +1767,7 @@ function cleanupCallConnection() {
   activeCallTargetSocketId = null;
   callType = null;
 }
+
 
 
 
