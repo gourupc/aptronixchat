@@ -131,10 +131,14 @@ const callTimerDisp = document.getElementById('call-timer');
 const toggleMicBtn = document.getElementById('toggle-mic-btn');
 const toggleVideoBtn = document.getElementById('toggle-video-btn');
 const switchCameraBtn = document.getElementById('switch-camera-btn');
+const toggleQualityBtn = document.getElementById('toggle-quality-btn');
+const qualityBtnLabel = document.getElementById('quality-btn-label');
 const hangupCallBtn = document.getElementById('hangup-call-btn');
 
 let videoInputDevices = [];
 let currentVideoDeviceIndex = 0;
+let isHighQuality = true;
+
 
 
 const dialingSound = document.getElementById('dialing-sound');
@@ -1337,7 +1341,16 @@ async function initiateUserCall(toSocketId, peerName, type) {
     videoStreamsContainer.classList.remove('hidden');
     audioCallPlaceholder.classList.add('hidden');
     toggleVideoBtn.classList.remove('hidden');
+    toggleQualityBtn.classList.remove('hidden');
     
+    // Set default labels
+    isHighQuality = true;
+    if (qualityBtnLabel) qualityBtnLabel.textContent = 'HD';
+    if (toggleQualityBtn) {
+      toggleQualityBtn.classList.remove('low-bandwidth');
+      toggleQualityBtn.title = 'Switch to Low Quality (SD)';
+    }
+
     // Detect multiple video cameras (like front/back cameras on mobile devices)
     navigator.mediaDevices.enumerateDevices().then(devices => {
       videoInputDevices = devices.filter(d => d.kind === 'videoinput');
@@ -1352,6 +1365,7 @@ async function initiateUserCall(toSocketId, peerName, type) {
     audioCallPlaceholder.classList.remove('hidden');
     toggleVideoBtn.classList.add('hidden'); // Hide camera control in audio calls
     switchCameraBtn.classList.add('hidden');
+    toggleQualityBtn.classList.add('hidden');
     
     activeCallPeerName.textContent = peerName;
     activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
@@ -1360,11 +1374,11 @@ async function initiateUserCall(toSocketId, peerName, type) {
   }
 
   try {
-
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: type === 'video'
+      video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
     });
+
 
     if (type === 'video') {
       localVideo.srcObject = localStream;
@@ -1412,7 +1426,16 @@ async function acceptIncomingCall() {
     videoStreamsContainer.classList.remove('hidden');
     audioCallPlaceholder.classList.add('hidden');
     toggleVideoBtn.classList.remove('hidden');
+    toggleQualityBtn.classList.remove('hidden');
     
+    // Set default labels
+    isHighQuality = true;
+    if (qualityBtnLabel) qualityBtnLabel.textContent = 'HD';
+    if (toggleQualityBtn) {
+      toggleQualityBtn.classList.remove('low-bandwidth');
+      toggleQualityBtn.title = 'Switch to Low Quality (SD)';
+    }
+
     // Detect multiple video cameras (like front/back cameras on mobile devices)
     navigator.mediaDevices.enumerateDevices().then(devices => {
       videoInputDevices = devices.filter(d => d.kind === 'videoinput');
@@ -1427,6 +1450,7 @@ async function acceptIncomingCall() {
     audioCallPlaceholder.classList.remove('hidden');
     toggleVideoBtn.classList.add('hidden');
     switchCameraBtn.classList.add('hidden');
+    toggleQualityBtn.classList.add('hidden');
     
     activeCallPeerName.textContent = peerName;
     activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
@@ -1434,12 +1458,12 @@ async function acceptIncomingCall() {
     activeCallStatus.textContent = 'Connecting...';
   }
 
-
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: callType === 'video'
+      video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
     });
+
 
     if (callType === 'video') {
       localVideo.srcObject = localStream;
@@ -1674,6 +1698,8 @@ function cleanupCallConnection() {
   incomingCallOverlay.classList.add('hidden');
   activeCallOverlay.classList.add('hidden');
   switchCameraBtn.classList.add('hidden');
+  toggleQualityBtn.classList.add('hidden');
+
   
   videoInputDevices = [];
   currentVideoDeviceIndex = 0;
@@ -1761,6 +1787,50 @@ async function switchCamera() {
 if (switchCameraBtn) {
   switchCameraBtn.addEventListener('click', switchCamera);
 }
+
+// Dynamic video quality toggling between High Quality (HD) and Low Quality (SD)
+async function toggleVideoQuality() {
+  if (!localStream || callType !== 'video') return;
+  const videoTrack = localStream.getVideoTracks()[0];
+  if (!videoTrack) return;
+
+  isHighQuality = !isHighQuality;
+
+  // HQ constraints: 720p 30fps. LQ constraints: 180p 15fps (saves massive data/network)
+  const constraints = isHighQuality 
+    ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+    : { width: { ideal: 320 }, height: { ideal: 180 }, frameRate: { ideal: 15 } };
+
+  try {
+    await videoTrack.applyConstraints(constraints);
+    console.log(`Video quality constraints applied. High Quality: ${isHighQuality}`);
+    
+    if (isHighQuality) {
+      if (qualityBtnLabel) qualityBtnLabel.textContent = 'HD';
+      if (toggleQualityBtn) {
+        toggleQualityBtn.classList.remove('low-bandwidth');
+        toggleQualityBtn.title = 'Switch to Low Quality (SD)';
+      }
+      alert('Video quality switched to High Definition (720p HD).');
+    } else {
+      if (qualityBtnLabel) qualityBtnLabel.textContent = 'SD';
+      if (toggleQualityBtn) {
+        toggleQualityBtn.classList.add('low-bandwidth');
+        toggleQualityBtn.title = 'Switch to High Quality (HD)';
+      }
+      alert('Video quality switched to Low Bandwidth (180p SD) to save network data.');
+    }
+  } catch (err) {
+    console.error('Failed to apply video constraints:', err);
+    isHighQuality = !isHighQuality; // Revert state
+    alert('Dynamic video resolution constraint switching is not supported on this device.');
+  }
+}
+
+if (toggleQualityBtn) {
+  toggleQualityBtn.addEventListener('click', toggleVideoQuality);
+}
+
 
 
 // Event delegation on sidebar user list (handles clicking to chat, and voice/video calling)

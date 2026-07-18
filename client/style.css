@@ -1283,6 +1283,13 @@ body, html {
   color: rgba(255, 255, 255, 0.4);
 }
 
+.btn-control-icon.low-bandwidth {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+}
+
+
 .btn-hangup {
   background: #ff3b30;
 }
