@@ -2106,7 +2106,7 @@ if (createCodeRoomBtn) {
         localStorage.setItem('joined-code-rooms', JSON.stringify(localRooms));
       }
       
-      alert(`🔑 Private Room Created!\n\nYour code is: ${code}\n\nShare this code with another user to let them join your private chat. Clicking OK will switch you into the room.`);
+      alert(`🔑 Private Room Created!\n\nYour Room Code is: ${code}\n\nShare this code with another user to let them join your private room. Clicking OK will switch you into the room.`);
       switchChatRoom(roomName);
     }
   });
@@ -2116,7 +2116,7 @@ if (createCodeRoomBtn) {
 const joinCodeRoomBtn = document.getElementById('join-code-room-btn');
 if (joinCodeRoomBtn) {
   joinCodeRoomBtn.addEventListener('click', () => {
-    const input = prompt('Enter the secure 6-digit chat code:');
+    const input = prompt('Enter the secure 6-digit room code:');
     if (!input) return;
     const code = input.trim();
     if (code.length === 0) return;
@@ -2142,4 +2142,5 @@ if (joinCodeRoomBtn) {
     switchChatRoom(roomName);
   });
 }
+
 
