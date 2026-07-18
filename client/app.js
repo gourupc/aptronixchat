@@ -143,7 +143,9 @@ const ringtoneSound = document.getElementById('ringtone-sound');
 let peerConnection = null;
 let localStream = null;
 let remoteStream = null;
+let iceCandidatesQueue = [];
 let activeCallTargetSocketId = null; 
+
 let callType = null; 
 let callTimer = null;
 let callDurationSeconds = 0;
@@ -616,6 +618,8 @@ function initializeSocket() {
       try {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
         startCallTimer();
+        // Process queued ice candidates
+        processQueuedIceCandidates();
       } catch (err) {
         console.error('Error setting remote description:', err);
       }
@@ -624,13 +628,19 @@ function initializeSocket() {
 
   socket.on('ice-candidate', async ({ candidate }) => {
     if (peerConnection) {
-      try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (err) {
-        console.error('Error adding ICE candidate:', err);
+      if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error('Error adding ICE candidate:', err);
+        }
+      } else {
+        console.log('Queuing ICE candidate (remote description not set yet)');
+        iceCandidatesQueue.push(candidate);
       }
     }
   });
+
 
   socket.on('call-rejected', () => {
     console.log('Call was declined.');
@@ -1437,6 +1447,9 @@ async function acceptIncomingCall() {
 
     createPeerConnection();
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+    // Process queued candidates
+    processQueuedIceCandidates();
+
 
     // Create SDP Answer
     const answer = await peerConnection.createAnswer();
@@ -1494,9 +1507,21 @@ function createPeerConnection() {
 
   // Handle incoming stream
   peerConnection.ontrack = (event) => {
-    console.log('Received remote media stream track.');
-    remoteStream = event.streams[0];
-    remoteVideo.srcObject = remoteStream;
+    console.log('Received remote media stream track:', event.track.kind);
+    
+    if (remoteVideo.srcObject) {
+      remoteVideo.srcObject.addTrack(event.track);
+    } else {
+      if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+      } else {
+        const newStream = new MediaStream();
+        newStream.addTrack(event.track);
+        remoteVideo.srcObject = newStream;
+      }
+    }
+    
+    remoteStream = remoteVideo.srcObject;
     
     if (callType === 'audio') {
       activeCallStatus.textContent = 'Voice Call Active';
@@ -1517,6 +1542,21 @@ function createPeerConnection() {
     }
   };
 }
+
+// Process any ICE candidates that arrived before the remote description was set
+async function processQueuedIceCandidates() {
+  if (!peerConnection) return;
+  console.log(`Processing ${iceCandidatesQueue.length} queued ICE candidates.`);
+  while (iceCandidatesQueue.length > 0) {
+    const candidate = iceCandidatesQueue.shift();
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+      console.error('Error adding queued ICE candidate:', err);
+    }
+  }
+}
+
 
 function toggleLocalMicrophone() {
   if (localStream) {
@@ -1637,9 +1677,11 @@ function cleanupCallConnection() {
   
   videoInputDevices = [];
   currentVideoDeviceIndex = 0;
+  iceCandidatesQueue = []; // Clear queue
   activeCallTargetSocketId = null;
   callType = null;
 }
+
 
 
 // Call Timer Helpers
