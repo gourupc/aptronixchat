@@ -633,7 +633,7 @@ function initializeSocket() {
   socket.on('ice-candidate', async ({ candidate }) => {
     if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
       try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        await peerConnection.addIceCandidate(candidate);
       } catch (err) {
         console.error('Error adding ICE candidate:', err);
       }
@@ -642,6 +642,7 @@ function initializeSocket() {
       iceCandidatesQueue.push(candidate);
     }
   });
+
 
 
 
@@ -1543,24 +1544,22 @@ function createPeerConnection() {
   peerConnection.ontrack = (event) => {
     console.log('Received remote media stream track:', event.track.kind);
     
-    if (remoteVideo.srcObject) {
-      remoteVideo.srcObject.addTrack(event.track);
-    } else {
-      if (event.streams && event.streams[0]) {
-        remoteVideo.srcObject = event.streams[0];
-      } else {
-        const newStream = new MediaStream();
-        newStream.addTrack(event.track);
-        remoteVideo.srcObject = newStream;
-      }
+    // Always ensure remoteStream is initialized
+    if (!remoteStream) {
+      remoteStream = new MediaStream();
     }
     
-    remoteStream = remoteVideo.srcObject;
+    // Add track to remote stream object
+    remoteStream.addTrack(event.track);
+    
+    // Force re-assign srcObject to trigger layout/pipeline updates in Chrome/Safari
+    remoteVideo.srcObject = remoteStream;
     
     if (callType === 'audio') {
       activeCallStatus.textContent = 'Voice Call Active';
     }
   };
+
 
   // ICE state monitor
   peerConnection.oniceconnectionstatechange = () => {
@@ -1584,12 +1583,13 @@ async function processQueuedIceCandidates() {
   while (iceCandidatesQueue.length > 0) {
     const candidate = iceCandidatesQueue.shift();
     try {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      await peerConnection.addIceCandidate(candidate);
     } catch (err) {
       console.error('Error adding queued ICE candidate:', err);
     }
   }
 }
+
 
 
 function toggleLocalMicrophone() {
