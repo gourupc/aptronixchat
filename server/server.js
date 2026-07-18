@@ -22,7 +22,8 @@ const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
 const SCRIPT_SECRET = 'doremon2024';
 
 // Flag to control email notifications
-let emailAlertsEnabled = true;
+let emailAlertsEnabled = false;
+
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
