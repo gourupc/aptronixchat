@@ -670,7 +670,25 @@ function initializeSocket() {
 
 
 
+  socket.on('track-changed', () => {
+    console.log('Received track-changed signal from remote peer. Refreshing player.');
+    logDiagnostic("Refreshing remote video...");
+    if (remoteVideo && remoteStream) {
+      // Temporarily detach and re-attach remoteStream to force mobile GPU to reload the decoder
+      remoteVideo.srcObject = null;
+      setTimeout(() => {
+        if (remoteStream) {
+          remoteVideo.srcObject = remoteStream;
+          remoteVideo.play().then(() => {
+            logDiagnostic("Remote video active");
+          }).catch(e => console.warn('Fallback play failed:', e));
+        }
+      }, 150);
+    }
+  });
+
   socket.on('call-rejected', () => {
+
     console.log('Call was declined.');
     dialingSound.pause();
     dialingSound.currentTime = 0;
@@ -1852,7 +1870,14 @@ async function switchCamera() {
         await videoSender.replaceTrack(newVideoTrack);
       }
     }
+    
+    // Notify remote peer to re-bind remote video elements and prevent freezing
+    if (socket && activeCallTargetSocketId) {
+      socket.emit('track-changed', { to: activeCallTargetSocketId });
+    }
+    
     logDiagnostic(`Switched to ${currentFacingMode} camera`);
+
   } catch (err) {
     console.error('Camera switch failed:', err);
     logDiagnostic('Camera switch failed.');
@@ -1901,7 +1926,13 @@ async function toggleVideoQuality() {
     await videoTrack.applyConstraints(constraints);
     console.log(`Video quality constraints applied. High Quality: ${isHighQuality}`);
     
+    // Notify remote peer to re-bind remote video elements and prevent freezing
+    if (socket && activeCallTargetSocketId) {
+      socket.emit('track-changed', { to: activeCallTargetSocketId });
+    }
+    
     if (isHighQuality) {
+
       if (qualityBtnLabel) qualityBtnLabel.textContent = 'HD';
       if (toggleQualityBtn) {
         toggleQualityBtn.classList.remove('low-bandwidth');

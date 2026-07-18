@@ -773,7 +773,12 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('track-changed', ({ to }) => {
+    io.to(to).emit('track-changed');
+  });
+
   socket.on('reject-call', ({ to }) => {
+
     io.to(to).emit('call-rejected', {
       from: socket.id
     });
