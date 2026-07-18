@@ -1363,10 +1363,14 @@ async function initiateUserCall(toSocketId, peerName, type) {
   }
 
   try {
+    // Reset candidates queue for new outgoing session
+    iceCandidatesQueue = [];
+
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
+      video: type === 'video'
     });
+
 
     if (type === 'video') {
       localVideo.srcObject = localStream;
@@ -1449,10 +1453,14 @@ async function acceptIncomingCall() {
   }
 
   try {
+    // Reset candidates queue for new incoming session
+    iceCandidatesQueue = [];
+
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
+      video: callType === 'video'
     });
+
 
     if (callType === 'video') {
       localVideo.srcObject = localStream;
