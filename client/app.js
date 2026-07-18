@@ -101,6 +101,8 @@ const sendBtn = document.getElementById('send-btn');
 // Premium status states
 let unreadMessageCounts = new Map(); 
 let globalUsersList = []; 
+let currentRoomUsers = []; 
+
 let activeSelfDestructDuration = 0; 
 let voiceMediaRecorder = null;
 let voiceAudioChunks = [];
@@ -784,14 +786,16 @@ function initializeSocket() {
     updateTypingIndicator();
   });
 
-  // Deprecated: Receive room members list updates (we now use global-users list for sidebar populating)
+  // Receive room members list updates
   socket.on('room-users', ({ room, users }) => {
     if (room !== currentRoom) return;
-    if (room.startsWith('dm:')) return; // Ignore room-users inside direct messages
+    if (room.startsWith('dm:')) return; 
+    currentRoomUsers = users; // Save occupants list
     const count = users.length;
     roomMembersCount.textContent = `${count} subscriber${count !== 1 ? 's' : ''} online`;
     userCountBadge.textContent = count;
   });
+
 
   // Receive dynamic active channels list updates from the server
   socket.on('rooms-list', (rooms) => {
@@ -1661,31 +1665,74 @@ onlineUsersList.addEventListener('click', (e) => {
 
 // Header call actions triggers
 headerAudioCallBtn.addEventListener('click', () => {
-  if (!currentRoom.startsWith('dm:')) return;
-  const parts = currentRoom.split(':');
-  const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
-  
-  // Find peer socket details
-  const peer = globalUsersList.find(u => u.username === peerName);
-  if (peer && peer.status === 'online') {
-    initiateUserCall(peer.id, peerName, 'audio');
-  } else {
-    alert(`${peerName} is offline right now.`);
+  if (currentRoom.startsWith('dm:')) {
+    const parts = currentRoom.split(':');
+    const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
+    
+    // Find peer socket details
+    const peer = globalUsersList.find(u => u.username === peerName);
+    if (peer && peer.status === 'online') {
+      initiateUserCall(peer.id, peerName, 'audio');
+    } else {
+      alert(`${peerName} is offline right now.`);
+    }
+  } else if (currentRoom.startsWith('code-')) {
+    const otherUsers = currentRoomUsers.filter(u => u.username !== currentUsername);
+    if (otherUsers.length === 0) {
+      alert("No one else is online in this private room to call.");
+    } else if (otherUsers.length === 1) {
+      const peer = otherUsers[0];
+      initiateUserCall(peer.id, peer.username, 'audio');
+    } else {
+      // Multiple users online in the room: prompt selection
+      const namesList = otherUsers.map(u => u.username);
+      const chosenName = prompt(`Who in this private room do you want to call?\n\nOnline occupants:\n${namesList.join(', ')}`);
+      if (chosenName) {
+        const peer = otherUsers.find(u => u.username.toLowerCase() === chosenName.trim().toLowerCase());
+        if (peer) {
+          initiateUserCall(peer.id, peer.username, 'audio');
+        } else {
+          alert("Selected user is not online in this room.");
+        }
+      }
+    }
   }
 });
 
 headerVideoCallBtn.addEventListener('click', () => {
-  if (!currentRoom.startsWith('dm:')) return;
-  const parts = currentRoom.split(':');
-  const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
-  
-  const peer = globalUsersList.find(u => u.username === peerName);
-  if (peer && peer.status === 'online') {
-    initiateUserCall(peer.id, peerName, 'video');
-  } else {
-    alert(`${peerName} is offline right now.`);
+  if (currentRoom.startsWith('dm:')) {
+    const parts = currentRoom.split(':');
+    const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
+    
+    const peer = globalUsersList.find(u => u.username === peerName);
+    if (peer && peer.status === 'online') {
+      initiateUserCall(peer.id, peerName, 'video');
+    } else {
+      alert(`${peerName} is offline right now.`);
+    }
+  } else if (currentRoom.startsWith('code-')) {
+    const otherUsers = currentRoomUsers.filter(u => u.username !== currentUsername);
+    if (otherUsers.length === 0) {
+      alert("No one else is online in this private room to call.");
+    } else if (otherUsers.length === 1) {
+      const peer = otherUsers[0];
+      initiateUserCall(peer.id, peer.username, 'video');
+    } else {
+      // Multiple users online in the room: prompt selection
+      const namesList = otherUsers.map(u => u.username);
+      const chosenName = prompt(`Who in this private room do you want to video call?\n\nOnline occupants:\n${namesList.join(', ')}`);
+      if (chosenName) {
+        const peer = otherUsers.find(u => u.username.toLowerCase() === chosenName.trim().toLowerCase());
+        if (peer) {
+          initiateUserCall(peer.id, peer.username, 'video');
+        } else {
+          alert("Selected user is not online in this room.");
+        }
+      }
+    }
   }
 });
+
 
 // Self-Destruct Timer Interactions
 selfDestructBtn.addEventListener('click', (e) => {
@@ -1977,14 +2024,25 @@ function switchChatRoom(roomName) {
   micRecordBtn.classList.remove('hidden');
 
   // Load UI Headers
-  if (roomName.startsWith('dm:')) {
-    const parts = roomName.split(':');
-    const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
-    activeRoomTitle.textContent = peerName;
-    
+  const isDM = roomName.startsWith('dm:');
+  const isCodeRoom = roomName.startsWith('code-');
+
+  if (isDM || isCodeRoom) {
     headerCallActions.classList.remove('hidden');
-    selfDestructControl.classList.remove('hidden');
-    updateHeaderDMStatus();
+    if (isDM) {
+      const parts = roomName.split(':');
+      const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
+      activeRoomTitle.textContent = peerName;
+      selfDestructControl.classList.remove('hidden');
+      updateHeaderDMStatus();
+    } else {
+      // Code Room
+      const displayName = `Private: ${roomName.replace('code-', '')}`;
+      activeRoomTitle.textContent = displayName;
+      roomMembersCount.textContent = '0 online';
+      currentRoomUsers = []; // Reset occupants until room-users list is received
+      selfDestructControl.classList.add('hidden');
+    }
   } else {
     activeRoomTitle.textContent = roomName;
     roomMembersCount.textContent = 'Connecting...';
@@ -1992,6 +2050,7 @@ function switchChatRoom(roomName) {
     headerCallActions.classList.add('hidden');
     selfDestructControl.classList.add('hidden');
   }
+
 
   if (socket) {
     socket.emit('join-room', {
