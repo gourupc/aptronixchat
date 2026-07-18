@@ -617,12 +617,16 @@ function initializeSocket() {
         await peerConnection.setLocalDescription(answer);
         socket.emit('make-answer', { to: from, answer: answer });
         logDiagnostic("Renegotiation complete.");
+        if (remoteVideo) {
+          remoteVideo.play().catch(e => console.warn('Play resume on remote offer failed:', e.message));
+        }
       } catch (err) {
         console.error("Renegotiation failed:", err);
         logDiagnostic("Renegotiation failed.");
       }
       return;
     }
+
 
     // Auto-reject if busy with another call
     if (peerConnection || localStream) {
@@ -657,12 +661,18 @@ function initializeSocket() {
     if (peerConnection) {
       try {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        startCallTimer();
+        if (!callTimer) {
+          startCallTimer();
+        }
+        if (remoteVideo) {
+          remoteVideo.play().catch(e => console.warn('Play resume on remote answer failed:', e.message));
+        }
         // Process queued ice candidates
         processQueuedIceCandidates();
       } catch (err) {
         console.error('Error setting remote description:', err);
       }
+
     }
   });
 
