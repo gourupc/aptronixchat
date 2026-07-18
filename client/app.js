@@ -1349,16 +1349,6 @@ async function initiateUserCall(toSocketId, peerName, type) {
       toggleQualityBtn.classList.remove('low-bandwidth');
       toggleQualityBtn.title = 'Switch to Low Quality (SD)';
     }
-
-    // Detect multiple video cameras (like front/back cameras on mobile devices)
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      videoInputDevices = devices.filter(d => d.kind === 'videoinput');
-      if (videoInputDevices.length > 1) {
-        switchCameraBtn.classList.remove('hidden');
-      } else {
-        switchCameraBtn.classList.add('hidden');
-      }
-    }).catch(e => console.warn('Video device discovery error:', e));
   } else {
     videoStreamsContainer.classList.add('hidden');
     audioCallPlaceholder.classList.remove('hidden');
@@ -1378,10 +1368,21 @@ async function initiateUserCall(toSocketId, peerName, type) {
       video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
     });
 
-
     if (type === 'video') {
       localVideo.srcObject = localStream;
+      
+      // Detect multiple video cameras after permission is granted
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+        console.log(`Discovered ${videoInputDevices.length} cameras:`, videoInputDevices);
+        if (videoInputDevices.length > 1) {
+          switchCameraBtn.classList.remove('hidden');
+        } else {
+          switchCameraBtn.classList.add('hidden');
+        }
+      }).catch(e => console.warn('Video device discovery error:', e));
     }
+
 
     createPeerConnection();
 
@@ -1434,16 +1435,6 @@ async function acceptIncomingCall() {
       toggleQualityBtn.classList.remove('low-bandwidth');
       toggleQualityBtn.title = 'Switch to Low Quality (SD)';
     }
-
-    // Detect multiple video cameras (like front/back cameras on mobile devices)
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      videoInputDevices = devices.filter(d => d.kind === 'videoinput');
-      if (videoInputDevices.length > 1) {
-        switchCameraBtn.classList.remove('hidden');
-      } else {
-        switchCameraBtn.classList.add('hidden');
-      }
-    }).catch(e => console.warn('Video device discovery error:', e));
   } else {
     videoStreamsContainer.classList.add('hidden');
     audioCallPlaceholder.classList.remove('hidden');
@@ -1463,10 +1454,21 @@ async function acceptIncomingCall() {
       video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false
     });
 
-
     if (callType === 'video') {
       localVideo.srcObject = localStream;
+      
+      // Detect multiple video cameras after permission is granted
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+        console.log(`Discovered ${videoInputDevices.length} cameras:`, videoInputDevices);
+        if (videoInputDevices.length > 1) {
+          switchCameraBtn.classList.remove('hidden');
+        } else {
+          switchCameraBtn.classList.add('hidden');
+        }
+      }).catch(e => console.warn('Video device discovery error:', e));
     }
+
 
     createPeerConnection();
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
