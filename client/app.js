@@ -37,7 +37,7 @@ try {
 
 let socket = null;
 let currentUsername = '';
-let currentRoom = 'Doremon General';
+let currentRoom = 'AetherAIFree General';
 let typingTimeout = null;
 let isTypingState = false;
 let activeTypingUsers = new Set();
@@ -699,7 +699,7 @@ function initializeSocket() {
   socket.on('rooms-list', (rooms) => {
     roomsList.innerHTML = '';
     rooms.forEach(room => {
-      const isLobby = room === 'Telegram General';
+      const isLobby = room === 'AetherAIFree General';
       const deleteButtonHTML = isLobby 
         ? '' 
         : `<button type="button" class="btn-room-delete delete-room-action" data-room="${room}" title="Delete Channel">
@@ -749,7 +749,7 @@ function initializeSocket() {
   socket.on('force-lobby-redirect', ({ room }) => {
     if (room === currentRoom) {
       alert(`The channel "# ${room}" you were viewing has been deleted by a user.`);
-      switchChatRoom('Doremon General');
+      switchChatRoom('AetherAIFree General');
     }
   });
 }

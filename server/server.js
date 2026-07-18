@@ -19,7 +19,7 @@ const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
 const NOTIFY_TO    = process.env.NOTIFY_TO   || ADMIN_EMAIL;
 const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbyz-mwGL69DlCIsz6F85aV1Dlp_OeDSSj8cJHZzZXaxZ2ZuK1mNjdgk2Icx_pnkeg1xTA/exec';
-const SCRIPT_SECRET = 'doremon2024';
+const SCRIPT_SECRET = 'aetheraifree2024';
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
@@ -30,13 +30,13 @@ async function sendLoginAlertEmail(ip, userAgent) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:500px;padding:20px;border:1px solid #ddd;border-radius:10px;">
       <h2 style="color:#2481cc;margin-top:0;">&#128272; New Login Detected</h2>
-      <p>Someone has successfully unlocked the Doremon Messenger gateway.</p>
+      <p>Someone has successfully unlocked the AetherAIFree gateway.</p>
       <table style="width:100%;border-collapse:collapse;margin-top:15px;">
         <tr><td style="padding:8px;font-weight:bold;color:#555;">Time</td><td style="padding:8px;">${timestamp}</td></tr>
         <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;color:#555;">IP Address</td><td style="padding:8px;"><code>${ip}</code></td></tr>
         <tr><td style="padding:8px;font-weight:bold;color:#555;">Browser</td><td style="padding:8px;font-size:0.85em;">${userAgent}</td></tr>
       </table>
-      <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from Doremon Messenger.</p>
+      <p style="margin-top:20px;font-size:0.8em;color:#999;">Automated security alert from AetherAIFree.</p>
     </div>`;
 
   try {
@@ -46,7 +46,7 @@ async function sendLoginAlertEmail(ip, userAgent) {
       body: JSON.stringify({
         secret: SCRIPT_SECRET,
         to: NOTIFY_TO,
-        subject: 'Doremon Messenger - New Login Alert',
+        subject: 'AetherAIFree - New Login Alert',
         html
       })
     });
@@ -252,7 +252,7 @@ const messageHistory = new Map();
 const MAX_HISTORY_PER_ROOM = 100;
 
 // Predefined channels/rooms
-const DEFAULT_ROOMS = ['Doremon General', 'Tech Talk', 'Meme Zone', 'Project Updates'];
+const DEFAULT_ROOMS = ['AetherAIFree General', 'Tech Talk', 'Meme Zone', 'Project Updates'];
 const activeRooms = new Set(DEFAULT_ROOMS);
 
 // Initialize message history for default rooms
@@ -282,7 +282,7 @@ io.on('connection', (socket) => {
       if (!existingUser.room.startsWith('dm:')) {
         socket.to(existingUser.room).emit('message', {
           id: `sys-${Date.now()}`,
-          username: 'Doremon Bot',
+          username: 'AetherAI Bot',
           text: `${existingUser.username} left the chat`,
           timestamp: new Date().toISOString(),
           system: true
@@ -568,7 +568,7 @@ io.on('connection', (socket) => {
 
   // Delete Custom Room
   socket.on('delete-room', ({ room }) => {
-    if (room === 'Doremon General') return;
+    if (room === 'AetherAIFree General') return;
     if (activeRooms.has(room)) {
       activeRooms.delete(room);
       messageHistory.delete(room);
@@ -576,7 +576,7 @@ io.on('connection', (socket) => {
       
       io.emit('rooms-list', Array.from(activeRooms));
 
-      // Redirect connected clients back to Doremon General lobby
+      // Redirect connected clients back to AetherAIFree General lobby
       users.forEach((value, key) => {
         if (value.room === room) {
           io.to(key).emit('force-lobby-redirect', { room });
