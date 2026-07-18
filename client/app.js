@@ -1393,8 +1393,9 @@ async function initiateUserCall(toSocketId, peerName, type) {
 
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: type === 'video'
+      video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 1.777777778 } } : false
     });
+
 
 
     if (type === 'video') {
@@ -1482,8 +1483,9 @@ async function acceptIncomingCall() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: callType === 'video'
+      video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 1.777777778 } } : false
     });
+
 
 
 
@@ -1882,10 +1884,11 @@ async function toggleVideoQuality() {
 
   isHighQuality = !isHighQuality;
 
-  // HQ constraints: 720p 30fps. LQ constraints: 180p 15fps (saves massive data/network)
+  // HQ constraints: 720p 30fps. LQ constraints: 360p 15fps. Both maintain 16:9 aspect ratio to prevent zoom shifts.
   const constraints = isHighQuality 
-    ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
-    : { width: { ideal: 320 }, height: { ideal: 180 }, frameRate: { ideal: 15 } };
+    ? { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: 1.777777778, frameRate: { ideal: 30 } }
+    : { width: { ideal: 640 }, height: { ideal: 360 }, aspectRatio: 1.777777778, frameRate: { ideal: 15 } };
+
 
   try {
     await videoTrack.applyConstraints(constraints);
