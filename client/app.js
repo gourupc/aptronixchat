@@ -1472,13 +1472,14 @@ async function acceptIncomingCall() {
 
     createPeerConnection();
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    // Process queued candidates
-    processQueuedIceCandidates();
-
 
     // Create SDP Answer
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
+
+    // Process queued candidates now that both local and remote descriptions are set
+    processQueuedIceCandidates();
+
 
     socket.emit('make-answer', {
       to: activeCallTargetSocketId,
