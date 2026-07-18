@@ -21,8 +21,12 @@ const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbyz-mwGL69DlCIsz6F85aV1Dlp_OeDSSj8cJHZzZXaxZ2ZuK1mNjdgk2Icx_pnkeg1xTA/exec';
 const SCRIPT_SECRET = 'doremon2024';
 
+// Flag to control email notifications
+let emailAlertsEnabled = true;
+
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
+
 
 // Async GeoIP lookup using free ip-api.com service (HTTPS outbound)
 async function getGeoLocation(ip) {
@@ -81,9 +85,16 @@ function parseUserAgent(ua) {
 
 // Send login alert email via Google Apps Script (HTTPS — never blocked by Render)
 async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) {
+  if (!emailAlertsEnabled) {
+    console.log('[LOGIN ALERT] Email notifications are disabled. Skipping email transmission.');
+    lastEmailStatus = { status: 'disabled', error: 'Email alerts disabled by administrator', time: new Date().toISOString() };
+    return;
+  }
+  
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   const geo = await getGeoLocation(ip);
   const uaInfo = parseUserAgent(userAgent);
+
 
   const subject = `🔑 AetherAIFree - Alert: ${type === 'join-room' ? `${username} Entered Chat` : 'Gateway Unlocked'}`;
 
@@ -250,11 +261,25 @@ app.get('/api/email-status', (req, res) => {
     config: {
       from: 'Gmail via Google Apps Script',
       to: NOTIFY_TO,
-      scriptConfigured: !!SCRIPT_URL
+      scriptConfigured: !!SCRIPT_URL,
+      emailAlertsEnabled: emailAlertsEnabled
     },
     lastEmailStatus
   });
 });
+
+// Admin toggle endpoint to turn emails ON or OFF
+app.post('/api/toggle-emails', (req, res) => {
+  const { enabled } = req.body;
+  if (typeof enabled === 'boolean') {
+    emailAlertsEnabled = enabled;
+  } else {
+    emailAlertsEnabled = !emailAlertsEnabled;
+  }
+  console.log(`[ADMIN CONFIG] Email alerts set to: ${emailAlertsEnabled}`);
+  res.json({ success: true, emailAlertsEnabled });
+});
+
 
 
 // --- File Attachment Setup ---

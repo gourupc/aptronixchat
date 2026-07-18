@@ -385,7 +385,65 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedUsername) {
     usernameInput.value = savedUsername;
   }
+
+  // --- Admin Email Alerts Toggle ---
+  const adminEmailToggleBtn = document.getElementById('admin-email-toggle-btn');
+  const adminEmailIconSvg = document.getElementById('admin-email-icon-svg');
+  let emailAlertsEnabled = true;
+
+  function updateEmailToggleIcon(enabled) {
+    if (!adminEmailToggleBtn || !adminEmailIconSvg) return;
+    if (enabled) {
+      adminEmailToggleBtn.title = "Admin Email Alerts: ON";
+      adminEmailToggleBtn.style.color = "var(--accent-color)";
+      adminEmailIconSvg.innerHTML = `
+        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+      `;
+    } else {
+      adminEmailToggleBtn.title = "Admin Email Alerts: OFF";
+      adminEmailToggleBtn.style.color = "var(--text-muted)";
+      adminEmailIconSvg.innerHTML = `
+        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-4.87L3.84 4.88 2.41 6.3 6 9.9v1.1c0 3.07 1.63 5.64 4.5 6.32V18c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-.68c.84-.2 1.6-.53 2.27-.96L17.7 20.3l1.41-1.42-1.11-1.75zM8 17v-4.88L13.88 17H8zm4-12.5c2.48 0 4 2.02 4 4.5v3.12l2 2V11c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-.68.16-1.3.43-1.85.8L12 4.5z"/>
+      `;
+    }
+  }
+
+  async function fetchEmailStatus() {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/email-status`);
+      if (res.ok) {
+        const data = await res.json();
+        emailAlertsEnabled = data.config?.emailAlertsEnabled !== false;
+        updateEmailToggleIcon(emailAlertsEnabled);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch email config status.", e);
+      updateEmailToggleIcon(true);
+    }
+  }
+  fetchEmailStatus();
+
+  if (adminEmailToggleBtn) {
+    adminEmailToggleBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${SOCKET_URL}/api/toggle-emails`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          emailAlertsEnabled = data.emailAlertsEnabled;
+          updateEmailToggleIcon(emailAlertsEnabled);
+          alert(`Admin Email Alerts have been turned ${emailAlertsEnabled ? 'ON' : 'OFF'}.`);
+        }
+      } catch (err) {
+        console.error("Error toggling email setting:", err);
+        alert("Failed to update settings.");
+      }
+    });
+  }
 });
+
 
 // --- Theme Toggle Action ---
 themeToggleBtn.addEventListener('click', () => {
