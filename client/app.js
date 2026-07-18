@@ -126,7 +126,16 @@ const audioCallPlaceholder = document.getElementById('audio-call-placeholder');
 const activeCallAvatar = document.getElementById('active-call-avatar');
 const activeCallPeerName = document.getElementById('active-call-peer-name');
 const activeCallStatus = document.getElementById('active-call-status');
+const callDiagnosticLog = document.getElementById('call-diagnostic-log');
 const callTimerDisp = document.getElementById('call-timer');
+
+function logDiagnostic(msg) {
+  console.log(`[Diagnostic] ${msg}`);
+  if (callDiagnosticLog) {
+    callDiagnosticLog.textContent = msg;
+  }
+}
+
 
 const toggleMicBtn = document.getElementById('toggle-mic-btn');
 const toggleVideoBtn = document.getElementById('toggle-video-btn');
@@ -631,17 +640,25 @@ function initializeSocket() {
   });
 
   socket.on('ice-candidate', async ({ candidate }) => {
+    if (!candidate) return;
     if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
       try {
-        await peerConnection.addIceCandidate(candidate);
+        logDiagnostic("Adding ICE candidate...");
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (err) {
-        console.error('Error adding ICE candidate:', err);
+        console.warn('Error adding wrapper candidate, trying raw:', err);
+        try {
+          await peerConnection.addIceCandidate(candidate);
+        } catch (err2) {
+          console.error('Error adding raw ICE candidate:', err2);
+        }
       }
     } else {
-      console.log('Queuing ICE candidate (peer connection or remote description not ready)');
+      logDiagnostic(`Queued candidate (${iceCandidatesQueue.length + 1})`);
       iceCandidatesQueue.push(candidate);
     }
   });
+
 
 
 
@@ -1390,6 +1407,8 @@ async function initiateUserCall(toSocketId, peerName, type) {
 
 
     createPeerConnection();
+    logDiagnostic("P2P PC Created (Outgoing offer)...");
+
 
     // Create RTC Offer
     const offer = await peerConnection.createOffer();
@@ -1478,7 +1497,9 @@ async function acceptIncomingCall() {
 
 
     createPeerConnection();
+    logDiagnostic("P2P PC Created (Answering call)...");
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
 
     // Create SDP Answer
     const answer = await peerConnection.createAnswer();
@@ -1575,7 +1596,7 @@ function createPeerConnection() {
   // ICE state monitor
   peerConnection.oniceconnectionstatechange = () => {
     if (peerConnection) {
-      console.log('ICE Connection state:', peerConnection.iceConnectionState);
+      logDiagnostic(`ICE: ${peerConnection.iceConnectionState}`);
       if (
         peerConnection.iceConnectionState === 'disconnected' ||
         peerConnection.iceConnectionState === 'failed' ||
@@ -1585,21 +1606,30 @@ function createPeerConnection() {
       }
     }
   };
+
 }
 
 // Process any ICE candidates that arrived before the remote description was set
 async function processQueuedIceCandidates() {
   if (!peerConnection) return;
-  console.log(`Processing ${iceCandidatesQueue.length} queued ICE candidates.`);
+  logDiagnostic(`Processing ${iceCandidatesQueue.length} queued ICE candidates...`);
   while (iceCandidatesQueue.length > 0) {
     const candidate = iceCandidatesQueue.shift();
+    if (!candidate) continue;
     try {
-      await peerConnection.addIceCandidate(candidate);
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     } catch (err) {
-      console.error('Error adding queued ICE candidate:', err);
+      console.warn('Error adding queued wrapper candidate, trying raw:', err);
+      try {
+        await peerConnection.addIceCandidate(candidate);
+      } catch (err2) {
+        console.error('Error adding queued raw ICE candidate:', err2);
+      }
     }
   }
+  logDiagnostic("ICE candidates processed.");
 }
+
 
 
 
