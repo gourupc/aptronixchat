@@ -1191,8 +1191,15 @@ body, html {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
   z-index: 10;
   background: #17212b;
+  transform: scaleX(-1); /* Mirrored self-view by default */
+  cursor: pointer;
   transition: transform 0.3s ease;
 }
+
+.local-video-pip.unmirrored {
+  transform: scaleX(1); /* Toggled to show actual output */
+}
+
 
 .audio-call-placeholder {
   position: absolute;
