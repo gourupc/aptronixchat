@@ -1833,12 +1833,6 @@ if (toggleQualityBtn) {
   toggleQualityBtn.addEventListener('click', toggleVideoQuality);
 }
 
-// Allow toggling between mirrored view and actual camera output on click/tap
-if (localVideo) {
-  localVideo.addEventListener('click', () => {
-    localVideo.classList.toggle('unmirrored');
-  });
-}
 
 
 
