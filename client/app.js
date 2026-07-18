@@ -1553,10 +1553,23 @@ function createPeerConnection() {
     // Force re-assign srcObject to trigger layout/pipeline updates in Chrome/Safari
     remoteVideo.srcObject = remoteStream;
     
+    // Explicitly play remote video to bypass browser autoplay policies
+    remoteVideo.play().catch(e => {
+      console.warn('Autoplay blocked. Adding fallback user gesture listener:', e.message);
+      const playFallback = () => {
+        remoteVideo.play().then(() => {
+          console.log('Remote video playback started successfully via user gesture.');
+        }).catch(err => console.error('Fallback playback failed:', err));
+      };
+      document.addEventListener('click', playFallback, { once: true });
+      document.addEventListener('touchstart', playFallback, { once: true });
+    });
+    
     if (callType === 'audio') {
       activeCallStatus.textContent = 'Voice Call Active';
     }
   };
+
 
 
   // ICE state monitor
