@@ -1594,11 +1594,18 @@ function createPeerConnection() {
       document.addEventListener('click', playFallback, { once: true });
       document.addEventListener('touchstart', playFallback, { once: true });
     });
+
+    // Handle track unmute event (e.g. when quality switches or camera toggles)
+    event.track.onunmute = () => {
+      console.log('Remote track unmuted. Triggering playback refresh.');
+      remoteVideo.play().catch(err => console.warn('Unmute play retry failed:', err.message));
+    };
     
     if (callType === 'audio') {
       activeCallStatus.textContent = 'Voice Call Active';
     }
   };
+
 
 
 
@@ -1919,6 +1926,15 @@ async function toggleVideoQuality() {
 if (toggleQualityBtn) {
   toggleQualityBtn.addEventListener('click', toggleVideoQuality);
 }
+
+// Automatically resume/play remote video when its stream resolution changes (SD <-> HD)
+if (remoteVideo) {
+  remoteVideo.addEventListener('resize', () => {
+    console.log('Remote video size changed (HD/SD toggle). Resuming playback...');
+    remoteVideo.play().catch(e => console.warn('Play resume on resize failed:', e.message));
+  });
+}
+
 
 
 
