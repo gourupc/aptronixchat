@@ -333,7 +333,7 @@ app.get('/api/aether-status', (req, res) => {
     process.env.CHATGPT_KEY,
     process.env.key,
     process.env.KEY,
-    Buffer.from('c2stcHJvai0tcjEwYWM4RkZwLTdJNVdDa3B3TThIQW5POTNOaXdfS2tBZTFxRWZuM2NrWUQ4aFNxMktaWWU2YldkZUpRVVl5WmlwVGJ3NEJ3OFQzQmxia0ZKc29ncTMxQjJaT3lZMGJzd0VCYVFlN1VVWjAwSWphNTY2djJWQWFqUUJnTDU1MG91azVad2JEQWdJOG5scG1NQUZuOVBKTm9RZ0E=', 'base64').toString('utf8')
+    Buffer.from('QVEuQWI4Uk42SjZocEloWnNNTDMtYkg5X0tSaTN1ZlU1X1ZMYmNWcFhsNkVWQ2stcFlrNEE=', 'base64').toString('utf8')
   );
 
   res.json({
@@ -359,7 +359,7 @@ app.post('/api/aether-chat', async (req, res) => {
     process.env.CHATGPT_KEY,
     process.env.key,
     process.env.KEY,
-    Buffer.from('c2stcHJvai0tcjEwYWM4RkZwLTdJNVdDa3B3TThIQW5POTNOaXdfS2tBZTFxRWZuM2NrWUQ4aFNxMktaWWU2YldkZUpRVVl5WmlwVGJ3NEJ3OFQzQmxia0ZKc29ncTMxQjJaT3lZMGJzd0VCYVFlN1VVWjAwSWphNTY2djJWQWFqUUJnTDU1MG91azVad2JEQWdJOG5scG1NQUZuOVBKTm9RZ0E=', 'base64').toString('utf8')
+    Buffer.from('QVEuQWI4Uk42SjZocEloWnNNTDMtYkg5X0tSaTN1ZlU1X1ZMYmNWcFhsNkVWQ2stcFlrNEE=', 'base64').toString('utf8')
   );
 
   if (!apiKey) {
@@ -371,7 +371,7 @@ app.post('/api/aether-chat', async (req, res) => {
     });
   }
 
-  const isGemini = apiKey.startsWith('AIzaSy');
+  const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     try {
       const postData = JSON.stringify({
