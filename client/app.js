@@ -251,15 +251,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let typingInterval = null;
 
+  const appendAgentChatMessage = (text, sender) => {
+    const chatHistoryEl = document.getElementById('agent-chat-history');
+    const welcomeScreen = document.getElementById('agent-welcome-screen');
+    if (welcomeScreen) {
+      welcomeScreen.style.display = 'none'; // hide welcome screen
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `agent-msg-bubble ${sender}`;
+    bubble.textContent = text;
+    
+    if (chatHistoryEl) {
+      chatHistoryEl.appendChild(bubble);
+      chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+    }
+    return bubble;
+  };
+
   const handleAISearch = async () => {
     const rawQuery = aiSearchInput.value || "";
     const query = rawQuery.trim();
     if (query.length === 0) return;
 
+    if (aiSearchInput) aiSearchInput.value = '';
+
+    // Append User Message to Thread
+    appendAgentChatMessage(query, 'user');
+
     const lowerQuery = query.toLowerCase();
 
-    // Secret keyword triggers: check for passcode attempts
+    // 1. Secret passcode verification
     if (lowerQuery.startsWith('golu')) {
+      const logBox = document.getElementById('agent-logs-panel');
+      const logContent = document.getElementById('agent-logs-content');
+      if (logBox) logBox.classList.remove('hidden');
+      if (logContent) {
+        logContent.textContent = '🔒 Access verification signal detected...\n';
+        setTimeout(() => {
+          logContent.textContent += '⚙️ Connecting to secure vault tunnel database...\n';
+        }, 200);
+      }
+
+      // Append typing bubble for Agent
+      const agentMsgDiv = appendAgentChatMessage('Authenticating access credential...', 'agent');
+
       try {
         const response = await fetch(`${SOCKET_URL}/api/verify-passcode`, {
           method: 'POST',
@@ -269,46 +305,63 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
         });
 
-
         const data = await response.json();
 
         if (response.status === 423) {
-          alert(data.error);
+          if (logContent) logContent.textContent += '❌ Access Denied: User locked out.\n';
+          agentMsgDiv.textContent = `⚠️ Security Lockout: ${data.error}`;
           return;
         }
 
         if (data.success) {
+          if (logContent) logContent.textContent += '✅ Credentials validated. Decrypting messaging pipelines...\n';
           sessionStorage.setItem('gate_unlocked', 'true');
-          if (securityMaskGate) {
-            securityMaskGate.style.transition = 'opacity 0.3s ease';
-            securityMaskGate.style.opacity = '0';
+          
+          setTimeout(() => {
+            if (logContent) logContent.textContent += '🔓 Secure channel unlocked. Initializing connection interface.\n';
+            agentMsgDiv.textContent = '🔓 Gateway authorization success. Establishing session. Access Granted.';
+            
             setTimeout(() => {
-              securityMaskGate.classList.add('hidden');
-            }, 300);
-          }
+              if (securityMaskGate) {
+                securityMaskGate.classList.add('fade-out');
+                setTimeout(() => {
+                  securityMaskGate.classList.add('hidden');
+                }, 400);
+              }
+            }, 600);
+          }, 500);
         } else {
-          alert(data.message);
+          if (logContent) logContent.textContent += '❌ Access Denied: Incorrect passcode.\n';
+          agentMsgDiv.textContent = `❌ Authorization Failed: ${data.message || 'Access key rejected.'}`;
         }
       } catch (err) {
         console.error("Passcode verification network error:", err);
-        alert("Failed to communicate with authentication server.");
+        if (logContent) logContent.textContent += '❌ Gateway Network connection failure.\n';
+        agentMsgDiv.textContent = '❌ Network Connection Error. Security authentication failed to reach server.';
       }
       return;
     }
 
-    // Otherwise, simulate a highly realistic streaming AI response!
-    if (aiResultsPanel) aiResultsPanel.classList.remove('hidden');
-    if (aiResponseContent) aiResponseContent.textContent = 'Searching network & analyzing sources...';
-
-    // Clear any active typing timers
-    if (typingInterval) clearInterval(typingInterval);
+    // 2. Normal AI Agent Chat Query simulation with Collapsible Live Exec logs!
+    const logBox = document.getElementById('agent-logs-panel');
+    const logContent = document.getElementById('agent-logs-content');
+    if (logBox) logBox.classList.remove('hidden');
+    if (logContent) {
+      logContent.textContent = `🔍 Initializing Web Search for query: "${query}"...\n`;
+      setTimeout(() => {
+        logContent.textContent += `⚙️ Compiling and routing vector space search results...\n`;
+        setTimeout(() => {
+          logContent.textContent += `💡 Synthesizing response using AetherAI model v4.2...\n`;
+        }, 300);
+      }, 200);
+    }
 
     // Default pre-baked or fallbacks
     let answerText = MOCK_AI_ANSWERS.default;
     let sourceTitle = "AetherAI Knowledge Base";
     let sourceUrl = "https://wikipedia.org";
 
-    // 1. Check local prebaked matches first
+    // Check local prebaked matches first
     let foundPrebaked = false;
     for (const key in MOCK_AI_ANSWERS) {
       if (lowerQuery.includes(key)) {
@@ -318,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 2. If not prebaked, query Wikipedia dynamically for a real, realistic explanation!
+    // If not prebaked, query Wikipedia dynamically
     if (!foundPrebaked) {
       try {
         const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
@@ -343,30 +396,55 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Typewrite the response character-by-character
-    if (aiResponseContent) aiResponseContent.textContent = '';
-    let charIndex = 0;
-    typingInterval = setInterval(() => {
-      if (charIndex < answerText.length) {
-        aiResponseContent.textContent += answerText.charAt(charIndex);
-        charIndex++;
-      } else {
-        clearInterval(typingInterval);
-        typingInterval = null;
-      }
-    }, 12);
+    // Append Typing Agent Bubble
+    const agentMsgDiv = appendAgentChatMessage('Thinking...', 'agent');
+    const chatHistoryEl = document.getElementById('agent-chat-history');
 
-    // Dynamically update the source links to look extremely authentic!
-    const sourcesGrid = document.getElementById('ai-sources-grid');
-    if (sourcesGrid) {
-      sourcesGrid.innerHTML = `
-        <a href="${sourceUrl}" target="_blank" class="source-item" style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-input-field); border: 1px solid var(--border-color); padding: 5px 10px; border-radius: 6px; text-decoration: none; color: var(--accent-color); font-size: 0.75rem;">
-          <span class="source-index" style="width: 14px; height: 14px; background: rgba(36,129,204,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">1</span>
-          <span class="source-domain">${sourceTitle}</span>
-        </a>
-      `;
-    }
+    // Wait a brief moment for "Toolchain Log" animation feel
+    setTimeout(() => {
+      if (logBox) logBox.classList.add('hidden'); // hide log panel
+      
+      // Typewrite the response character-by-character
+      agentMsgDiv.textContent = '';
+      let charIndex = 0;
+      if (typingInterval) clearInterval(typingInterval);
+      
+      typingInterval = setInterval(() => {
+        if (charIndex < answerText.length) {
+          agentMsgDiv.textContent += answerText.charAt(charIndex);
+          charIndex++;
+          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        } else {
+          clearInterval(typingInterval);
+          typingInterval = null;
+          
+          // Append Source Citations beneath message
+          const citationDiv = document.createElement('div');
+          citationDiv.style.marginTop = '10px';
+          citationDiv.style.fontSize = '0.72rem';
+          citationDiv.style.display = 'flex';
+          citationDiv.style.gap = '6px';
+          citationDiv.innerHTML = `
+            <span style="color: #718096;">Citation:</span>
+            <a href="${sourceUrl}" target="_blank" style="color: #00f0ff; text-decoration: underline;">[1] ${sourceTitle}</a>
+          `;
+          agentMsgDiv.appendChild(citationDiv);
+          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        }
+      }, 8);
+    }, 800);
   };
+
+  // Handle click on prompt cards to instantly run searches
+  document.querySelectorAll('.prompt-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const promptText = card.getAttribute('data-prompt');
+      if (aiSearchInput) {
+        aiSearchInput.value = promptText;
+        handleAISearch();
+      }
+    });
+  });
 
   if (aiSearchBtn) aiSearchBtn.addEventListener('click', handleAISearch);
   if (aiSearchInput) {
@@ -374,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') handleAISearch();
     });
   }
+
 
   // Dynamic Viewport height recalculation to support mobile layout adjustments
   const calculateVH = () => {
