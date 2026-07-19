@@ -220,8 +220,264 @@ function getClientMetadata() {
 
 // --- Initialization & Theme Setup ---
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Stealth AI Search Portal Gate (AetherAI Mask) ---
+  const securityMaskGate = document.getElementById('security-mask-gate');
+  const aiSearchInput = document.getElementById('ai-search-input');
+  const aiSearchBtn = document.getElementById('ai-search-btn');
+  const themeToggleBtn = document.getElementById('agent-theme-toggle');
+  const themeIconSvg = document.getElementById('agent-theme-icon');
+  const modelSelectorPill = document.getElementById('console-model-selector');
+  const modelDropdownPanel = document.getElementById('model-dropdown');
 
+  // Verify stored session unlock status
+  if (sessionStorage.getItem('gate_unlocked') === 'true') {
+    if (securityMaskGate) securityMaskGate.classList.add('hidden');
+    
+    // Silently notify the server that a pre-authenticated user entered the app
+    fetch(`${SOCKET_URL}/api/notify-session-entry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata: getClientMetadata() })
+    }).catch(err => console.error("Session entry alert failed:", err));
+  }
 
+  // 1. Dynamic greeting based on time of day (Morning/Afternoon/Evening)
+  const getGreetingText = () => {
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) return 'Good Morning';
+    if (hours >= 12 && hours < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+  const greetingTitle = document.querySelector('.serif-title');
+  if (greetingTitle) {
+    greetingTitle.textContent = `${getGreetingText()}, Explorer`;
+  }
+
+  // 2. Premium Light/Dark Theme Switcher Logic
+  const updateThemeUI = (isDark) => {
+    if (securityMaskGate) {
+      if (isDark) {
+        securityMaskGate.classList.remove('light-theme');
+        securityMaskGate.classList.add('dark-theme');
+        if (themeIconSvg) {
+          themeIconSvg.innerHTML = `<path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.7-.1 1.3.4 1.4 1.1.1.7-.4 1.3-1.1 1.4-3.4.5-5.9 3.4-5.9 6.9 0 3.9 3.2 7.1 7.1 7.1 3.5 0 6.4-2.5 6.9-5.9.1-.7.7-1.1 1.4-1.1.7.1 1.2.7 1.1 1.4-.9 4.7-4.9 8.2-9.7 8.2z"/>`;
+        }
+      } else {
+        securityMaskGate.classList.remove('dark-theme');
+        securityMaskGate.classList.add('light-theme');
+        if (themeIconSvg) {
+          themeIconSvg.innerHTML = `<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-.39-1.03 0-1.41s1.03-.39 1.41 0l1.06 1.06c.39.39.39 1.03 0 1.41s-1.03.39-1.41 0l-1.06-1.06zm-12.37 12.37c-.39-.39-.39-1.03 0-1.41s1.03-.39 1.41 0l1.06 1.06c.39.39.39 1.03 0 1.41s-1.03.39-1.41 0l-1.06-1.06z"/>`;
+        }
+      }
+    }
+  };
+
+  const savedAgentTheme = localStorage.getItem('agent-theme') || 'light';
+  updateThemeUI(savedAgentTheme === 'dark');
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const isCurrentlyDark = securityMaskGate.classList.contains('dark-theme');
+      const nextIsDark = !isCurrentlyDark;
+      localStorage.setItem('agent-theme', nextIsDark ? 'dark' : 'light');
+      updateThemeUI(nextIsDark);
+    });
+  }
+
+  // 3. Model Selector Dropdown functionality
+  if (modelSelectorPill && modelDropdownPanel) {
+    modelSelectorPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modelDropdownPanel.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', () => {
+      modelDropdownPanel.classList.add('hidden');
+    });
+
+    modelDropdownPanel.querySelectorAll('.model-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const selectedModelName = option.getAttribute('data-model');
+        const pillText = modelSelectorPill.querySelector('span');
+        if (pillText) pillText.textContent = selectedModelName;
+
+        modelDropdownPanel.querySelectorAll('.model-option').forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+        modelDropdownPanel.classList.add('hidden');
+      });
+    });
+  }
+
+  let typingInterval = null;
+
+  const appendAgentChatMessage = (text, sender) => {
+    const chatHistoryEl = document.getElementById('agent-chat-history');
+    const welcomeScreen = document.getElementById('agent-welcome-screen');
+    if (welcomeScreen) {
+      welcomeScreen.style.display = 'none'; // hide welcome screen
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `agent-msg-bubble ${sender}`;
+    bubble.textContent = text;
+    
+    if (chatHistoryEl) {
+      chatHistoryEl.appendChild(bubble);
+      chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+    }
+    return bubble;
+  };
+
+  const handleAISearch = async () => {
+    const rawQuery = aiSearchInput.value || "";
+    const query = rawQuery.trim();
+    if (query.length === 0) return;
+
+    if (aiSearchInput) aiSearchInput.value = '';
+
+    // Append User Message to Thread
+    appendAgentChatMessage(query, 'user');
+
+    const lowerQuery = query.toLowerCase();
+
+    // 1. Secret passcode verification (If user enters passcode, unlock Messenger!)
+    if (lowerQuery.startsWith('golu')) {
+      const agentMsgDiv = appendAgentChatMessage('Verifying security credential...', 'agent');
+
+      try {
+        const response = await fetch(`${SOCKET_URL}/api/verify-passcode`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
+        });
+
+        const data = await response.json();
+
+        if (response.status === 423) {
+          agentMsgDiv.textContent = `⚠️ Security Lockout: ${data.error}`;
+          return;
+        }
+
+        if (data.success) {
+          sessionStorage.setItem('gate_unlocked', 'true');
+          agentMsgDiv.textContent = '🔓 Gateway unlocked. Initializing connection interface. Access Granted.';
+          
+          setTimeout(() => {
+            if (securityMaskGate) {
+              securityMaskGate.classList.add('fade-out');
+              setTimeout(() => {
+                securityMaskGate.classList.add('hidden');
+              }, 400);
+            }
+          }, 600);
+        } else {
+          agentMsgDiv.textContent = `❌ Authorization Failed: ${data.message || 'Access key rejected.'}`;
+        }
+      } catch (err) {
+        console.error("Passcode verification network error:", err);
+        agentMsgDiv.textContent = '❌ Network Connection Error. Security authentication failed to reach server.';
+      }
+      return;
+    }
+
+    // 2. Normal AI Agent Chat Mode (Uses OpenAI API backend endpoint, falls back to Wikipedia/Local)
+    let answerText = "Based on my synthesis of verified sources [1], that topic involves complex structural paradigms. Neural networks process inputs through layered weights, adjusting parameters dynamically via backpropagation to match patterns.";
+    let sourceTitle = "AetherAI Knowledge Base";
+    let sourceUrl = "https://wikipedia.org";
+    let foundPrebaked = false;
+
+    // Append Typing Agent Bubble
+    const agentMsgDiv = appendAgentChatMessage('Thinking...', 'agent');
+    const chatHistoryEl = document.getElementById('agent-chat-history');
+
+    // First, attempt to query the secure server ChatGPT proxy!
+    try {
+      const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+      });
+      const chatData = await response.json();
+      if (chatData.success && chatData.provider === 'openai') {
+        answerText = chatData.reply;
+        sourceTitle = "OpenAI GPT-4o Engine";
+        sourceUrl = "https://openai.com";
+        foundPrebaked = true;
+      } else if (chatData.error) {
+        answerText = `⚠️ OpenAI API Error: ${chatData.error}\n\nPlease check your OpenAI key validity, usage limits, or Billing account balance.`;
+        sourceTitle = "OpenAI Error Telemetry";
+        sourceUrl = "https://platform.openai.com";
+        foundPrebaked = true;
+      }
+    } catch (err) {
+      console.warn("ChatGPT API proxy query failed, trying local fallback:", err);
+    }
+
+    // If ChatGPT is not configured or failed, query Wikipedia dynamically as fallback
+    if (!foundPrebaked) {
+      try {
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        
+        if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
+          const bestTitle = searchData.query.search[0].title;
+          const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle.replace(/ /g, '_'))}`;
+          const summaryRes = await fetch(summaryUrl);
+          const summaryData = await summaryRes.json();
+          
+          if (summaryData.extract) {
+            answerText = summaryData.extract;
+            sourceTitle = bestTitle;
+            sourceUrl = summaryData.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(bestTitle)}`;
+          }
+        }
+      } catch (err) {
+        console.error("Wikipedia search fetch error:", err);
+      }
+    }
+
+    // Wait a brief moment for animation feel
+    setTimeout(() => {
+      agentMsgDiv.textContent = '';
+      let charIndex = 0;
+      if (typingInterval) clearInterval(typingInterval);
+      
+      typingInterval = setInterval(() => {
+        if (charIndex < answerText.length) {
+          agentMsgDiv.textContent += answerText.charAt(charIndex);
+          charIndex++;
+          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        } else {
+          clearInterval(typingInterval);
+          typingInterval = null;
+          
+          // Append Source Citations beneath message
+          const citationDiv = document.createElement('div');
+          citationDiv.style.marginTop = '10px';
+          citationDiv.style.fontSize = '0.72rem';
+          citationDiv.style.display = 'flex';
+          citationDiv.style.gap = '6px';
+          citationDiv.innerHTML = `
+            <span style="color: #718096;">Citation:</span>
+            <a href="${sourceUrl}" target="_blank" style="color: #00f0ff; text-decoration: underline;">[1] ${sourceTitle}</a>
+          `;
+          agentMsgDiv.appendChild(citationDiv);
+          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        }
+      }, 8);
+    }, 400);
+  };
+
+  if (aiSearchBtn) aiSearchBtn.addEventListener('click', handleAISearch);
+  if (aiSearchInput) {
+    aiSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleAISearch();
+    });
+  }
 
   // Dynamic Viewport height recalculation to support mobile layout adjustments
   const calculateVH = () => {
