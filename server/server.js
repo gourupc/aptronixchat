@@ -374,28 +374,23 @@ app.post('/api/aether-chat', async (req, res) => {
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     // Map selected model names to active Google Generative API equivalents
-    let targetGeminiModel = 'gemini-3.5-flash';
-    if (model === 'Gemini 2.5 Pro') {
+    let targetGeminiModel = 'gemini-3.1-flash-lite'; // Default to ultra fast lite model
+    if (model === 'Gemini 3.5 Flash') {
+      targetGeminiModel = 'gemini-3.5-flash';
+    } else if (model === 'Gemini 2.5 Pro') {
       targetGeminiModel = 'gemini-2.5-pro';
     } else if (model === 'Gemini 2.5 Flash') {
       targetGeminiModel = 'gemini-flash-latest';
+    } else if (model === 'Gemini 3.1 Flash Lite') {
+      targetGeminiModel = 'gemini-3.1-flash-lite';
     }
 
-    const systemPrompt = `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).`;
+    const systemPrompt = `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash architecture. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).`;
 
     const postData = JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${query}` }] }],
       generationConfig: { temperature: 0.7 }
     });
-
-    // Use streamGenerateContent for instant word-by-word output
-    const options = {
-      hostname: 'generativelanguage.googleapis.com',
-      port: 443,
-      path: `/v1beta/models/${targetGeminiModel}:streamGenerateContent?key=${apiKey}&alt=sse`,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-    };
 
     // Set SSE headers so client receives chunks in real time
     res.setHeader('Content-Type', 'text/event-stream');
@@ -418,54 +413,51 @@ app.post('/api/aether-chat', async (req, res) => {
       let firstChunkReceived = false;
 
       activeReq = https.request(options, (geminiRes) => {
-        // Handle rate limit
-        if (geminiRes.statusCode === 429) {
+        // Handle rate limit or error: Fallback instantly to gemini-3.1-flash-lite!
+        if (geminiRes.statusCode === 429 || geminiRes.statusCode === 404) {
           let errBody = '';
           geminiRes.on('data', c => errBody += c);
           geminiRes.on('end', () => {
-            try {
-              const parsed = JSON.parse(errBody);
-              const msg = parsed?.error?.message || '';
-              const match = msg.match(/retry in ([\d.]+)s/i);
-              const waitMs = match ? Math.ceil(parseFloat(match[1])) * 1000 : 15000;
-              
-              if (attempt < 3) {
-                const waitSec = Math.round(waitMs / 1000);
-                res.write(`data: ${JSON.stringify({ type: 'retry', message: `Rate limit hit. Retrying in ${waitSec}s... (Attempt ${attempt}/2)` })}\n\n`);
-                console.warn(`[GEMINI STREAM] 429 Rate Limit. Waiting ${waitSec}s to retry...`);
-                setTimeout(() => {
-                  runStream(currentModel, attempt + 1);
-                }, Math.min(waitMs, 30000));
-              } else if (currentModel !== 'gemini-flash-latest') {
-                res.write(`data: ${JSON.stringify({ type: 'retry', message: `Rate limit exceeded. Falling back to Gemini 2.5...` })}\n\n`);
-                console.warn(`[GEMINI STREAM] 429 Rate Limit. Falling back to gemini-flash-latest...`);
-                setTimeout(() => {
-                  runStream('gemini-flash-latest', 1);
-                }, 1000);
-              } else {
-                res.write(`data: ${JSON.stringify({ type: 'error', error: 'Gemini rate limits exceeded. Please wait a minute before retrying.' })}\n\n`);
+            if (currentModel !== 'gemini-3.1-flash-lite') {
+              console.warn(`[GEMINI STREAM] ${geminiRes.statusCode} on ${currentModel}. Falling back instantly to gemini-3.1-flash-lite...`);
+              res.write(`data: ${JSON.stringify({ type: 'retry', message: `Model is busy. Switching instantly to Gemini 3.1 Flash Lite...` })}\n\n`);
+              runStream('gemini-3.1-flash-lite', 1);
+            } else {
+              // If lite model also fails, do a short wait then retry
+              try {
+                const parsed = JSON.parse(errBody);
+                const msg = parsed?.error?.message || '';
+                const match = msg.match(/retry in ([\d.]+)s/i);
+                const waitMs = match ? Math.ceil(parseFloat(match[1])) * 1000 : 10000;
+                
+                if (attempt < 3) {
+                  const waitSec = Math.round(waitMs / 1000);
+                  res.write(`data: ${JSON.stringify({ type: 'retry', message: `Server busy. Retrying in ${waitSec}s...` })}\n\n`);
+                  setTimeout(() => runStream(currentModel, attempt + 1), Math.min(waitMs, 20000));
+                } else {
+                  res.write(`data: ${JSON.stringify({ type: 'error', error: 'AI limit exceeded. Please wait a minute.' })}\n\n`);
+                  res.end();
+                }
+              } catch {
+                res.write(`data: ${JSON.stringify({ type: 'error', error: 'AI limit exceeded.' })}\n\n`);
                 res.end();
               }
-            } catch (e) {
-              res.write(`data: ${JSON.stringify({ type: 'error', error: 'Rate limit exceeded.' })}\n\n`);
-              res.end();
             }
           });
           return;
         }
 
-        // Handle error status code other than 200/429
+        // Handle other HTTP errors
         if (geminiRes.statusCode !== 200) {
           let errBody = '';
           geminiRes.on('data', c => errBody += c);
           geminiRes.on('end', () => {
-            try {
-              const parsed = JSON.parse(errBody);
-              res.write(`data: ${JSON.stringify({ type: 'error', error: parsed.error?.message || `HTTP ${geminiRes.statusCode}` })}\n\n`);
-            } catch {
+            if (currentModel !== 'gemini-3.1-flash-lite') {
+              runStream('gemini-3.1-flash-lite', 1);
+            } else {
               res.write(`data: ${JSON.stringify({ type: 'error', error: `HTTP ${geminiRes.statusCode}` })}\n\n`);
+              res.end();
             }
-            res.end();
           });
           return;
         }
@@ -501,8 +493,12 @@ app.post('/api/aether-chat', async (req, res) => {
 
       activeReq.on('error', (err) => {
         console.error('[GEMINI STREAM ERROR]', err);
-        res.write(`data: ${JSON.stringify({ type: 'error', error: 'Network error communicating with Gemini.' })}\n\n`);
-        res.end();
+        if (currentModel !== 'gemini-3.1-flash-lite') {
+          runStream('gemini-3.1-flash-lite', 1);
+        } else {
+          res.write(`data: ${JSON.stringify({ type: 'error', error: 'Network error communicating with Gemini.' })}\n\n`);
+          res.end();
+        }
       });
 
       activeReq.write(postData);

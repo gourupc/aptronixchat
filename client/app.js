@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // First, attempt to query the secure server ChatGPT proxy with STREAMING!
     try {
-      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 3.5 Flash';
+      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 3.1 Flash Lite';
       const controller = new AbortController();
       const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
