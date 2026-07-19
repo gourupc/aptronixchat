@@ -381,73 +381,96 @@ app.post('/api/aether-chat', async (req, res) => {
       targetGeminiModel = 'gemini-flash-latest';
     }
 
-    // Helper: Call Gemini API with a specific model, returns Promise<{statusCode, body}>
-    const callGemini = (modelName) => new Promise((resolve, reject) => {
-      const postData = JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [{ text: `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).\n\nUser Question: ${query}` }]
-        }],
-        generationConfig: { temperature: 0.7 }
-      });
+    const systemPrompt = `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).`;
 
-      const options = {
-        hostname: 'generativelanguage.googleapis.com',
-        port: 443,
-        path: `/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-      };
-
-      const req = https.request(options, (apiRes) => {
-        let body = '';
-        apiRes.on('data', chunk => body += chunk);
-        apiRes.on('end', () => resolve({ statusCode: apiRes.statusCode, body }));
-      });
-      req.on('error', reject);
-      req.write(postData);
-      req.end();
+    const postData = JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${query}` }] }],
+      generationConfig: { temperature: 0.7 }
     });
 
-    // Helper: extract retry-after seconds from Gemini 429 error message
-    const getRetryDelay = (parsed) => {
-      try {
-        const msg = parsed?.error?.message || '';
-        const match = msg.match(/retry in ([\d.]+)s/i);
-        return match ? Math.ceil(parseFloat(match[1])) * 1000 : 20000; // default 20s
-      } catch { return 20000; }
+    // Use streamGenerateContent for instant word-by-word output
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      port: 443,
+      path: `/v1beta/models/${targetGeminiModel}:streamGenerateContent?key=${apiKey}&alt=sse`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
     };
 
-    // Helper: sleep for ms milliseconds
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    // Set SSE headers so client receives chunks in real time
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // disable Nginx/Render buffering
 
-    try {
-      // First attempt with the selected/default model
-      let { statusCode, body } = await callGemini(targetGeminiModel);
-      let parsed = JSON.parse(body);
+    let firstChunkReceived = false;
+    let buffer = '';
 
-      // If rate-limited (429), wait the retry delay then retry
-      if (statusCode === 429) {
-        const delay = getRetryDelay(parsed);
-        const waitSec = Math.round(delay / 1000);
-        console.warn(`[GEMINI] Rate limit hit on ${targetGeminiModel}. Waiting ${waitSec}s then retrying...`);
-        await sleep(Math.min(delay, 35000)); // wait (max 35s)
-        const retry = await callGemini(targetGeminiModel);
-        statusCode = retry.statusCode;
-        parsed = JSON.parse(retry.body);
+    const streamReq = https.request(options, (geminiRes) => {
+      // Handle rate limit before streaming starts
+      if (geminiRes.statusCode === 429) {
+        let errBody = '';
+        geminiRes.on('data', c => errBody += c);
+        geminiRes.on('end', () => {
+          try {
+            const parsed = JSON.parse(errBody);
+            const msg = parsed?.error?.message || '';
+            const match = msg.match(/retry in ([\d.]+)s/i);
+            const waitMs = match ? Math.ceil(parseFloat(match[1])) * 1000 : 20000;
+            console.warn(`[GEMINI STREAM] Rate limit. Waiting ${Math.round(waitMs/1000)}s then retrying...`);
+            setTimeout(() => {
+              // Retry same request after wait
+              res.write(`data: ${JSON.stringify({ type: 'retry' })}\n\n`);
+              res.end();
+            }, Math.min(waitMs, 35000));
+          } catch (e) {
+            res.write(`data: ${JSON.stringify({ type: 'error', error: 'Rate limit exceeded. Please try again.' })}\n\n`);
+            res.end();
+          }
+        });
+        return;
       }
 
-      const reply = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (statusCode === 200 && reply) {
-        res.json({ success: true, provider: 'gemini', reply });
-      } else {
-        console.error('[GEMINI API ERROR]', parsed);
-        res.status(statusCode || 500).json({ error: parsed.error?.message || 'Gemini API returned an error.' });
-      }
-    } catch (err) {
-      console.error('[GEMINI ROUTE ERROR]', err);
-      res.status(500).json({ error: 'Failed to communicate with Gemini model.', details: err.message });
-    }
+      geminiRes.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              if (!firstChunkReceived) {
+                firstChunkReceived = true;
+                console.log('[GEMINI STREAM] First token received');
+              }
+              res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
+            }
+          } catch (e) { /* skip unparseable chunks */ }
+        }
+      });
+
+      geminiRes.on('end', () => {
+        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        res.end();
+      });
+    });
+
+    streamReq.on('error', (err) => {
+      console.error('[GEMINI STREAM ERROR]', err);
+      res.write(`data: ${JSON.stringify({ type: 'error', error: 'Network error communicating with Gemini.' })}\n\n`);
+      res.end();
+    });
+
+    // Close stream when client disconnects
+    req.on('close', () => streamReq.destroy());
+
+    streamReq.write(postData);
+    streamReq.end();
     return;
   }
 

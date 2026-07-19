@@ -392,11 +392,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const agentMsgDiv = appendAgentChatMessage('Thinking...', 'agent');
     const chatHistoryEl = document.getElementById('agent-chat-history');
 
-    // First, attempt to query the secure server ChatGPT proxy!
+    // First, attempt to query the secure server ChatGPT proxy with STREAMING!
     try {
-      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 2.5 Flash';
+      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 3.5 Flash';
       const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => controller.abort(), 45000); // 45s timeout for server-side retry wait
+      const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
       const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -404,6 +405,63 @@ document.addEventListener('DOMContentLoaded', () => {
         signal: controller.signal
       });
       clearTimeout(fetchTimeout);
+
+      // --- Streaming mode: text/event-stream ---
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/event-stream') && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let streamBuffer = '';
+        let fullText = '';
+        let started = false;
+
+        agentMsgDiv.textContent = ''; // Clear "Thinking..." immediately
+
+        const processStream = async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            streamBuffer += decoder.decode(value, { stream: true });
+            const lines = streamBuffer.split('\n');
+            streamBuffer = lines.pop(); // keep partial line
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+              try {
+                const evt = JSON.parse(jsonStr);
+                if (evt.type === 'chunk' && evt.text) {
+                  fullText += evt.text;
+                  agentMsgDiv.innerHTML = parseMarkdown(fullText);
+                  if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+                  if (!started) { started = true; }
+                } else if (evt.type === 'done') {
+                  // Stream complete — append citation
+                  const citationDiv = document.createElement('div');
+                  citationDiv.style.cssText = 'margin-top:10px;font-size:0.72rem;display:flex;gap:6px;';
+                  citationDiv.innerHTML = `<span style="color:#718096;">Citation:</span><a href="https://aistudio.google.com" target="_blank" style="color:#00f0ff;text-decoration:underline;">[1] Google Gemini Engine</a>`;
+                  agentMsgDiv.appendChild(citationDiv);
+                  if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+                } else if (evt.type === 'error') {
+                  const isQuota = (evt.error || '').toLowerCase().includes('quota') || (evt.error || '').toLowerCase().includes('rate');
+                  agentMsgDiv.innerHTML = isQuota
+                    ? `⏳ AetherAI is busy right now. Please try again in a moment.`
+                    : `⚠️ ${evt.error}`;
+                } else if (evt.type === 'retry') {
+                  agentMsgDiv.innerHTML = `⏳ High traffic — retrying your request automatically...`;
+                }
+              } catch (e) { /* skip malformed SSE lines */ }
+            }
+          }
+        };
+
+        await processStream();
+        return; // Done — skip fallback logic below
+      }
+
+      // --- Non-streaming fallback (JSON response) ---
       const chatData = await response.json();
       if (chatData.success && (chatData.provider === 'openai' || chatData.provider === 'gemini')) {
         answerText = chatData.reply;
@@ -411,7 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceUrl = chatData.provider === 'gemini' ? "https://aistudio.google.com" : "https://openai.com";
         foundPrebaked = true;
       } else if (chatData.error) {
-        // Show a friendly message - hide raw API quota error
         const isQuota = chatData.error.toLowerCase().includes('quota') || chatData.error.toLowerCase().includes('rate');
         answerText = isQuota
           ? `⏳ AetherAI is processing your request... The AI is busy right now. Please try again in a moment.`
