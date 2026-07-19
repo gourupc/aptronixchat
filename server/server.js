@@ -445,63 +445,8 @@ app.post('/api/aether-chat', async (req, res) => {
     return;
   }
 
-  try {
-    const postData = JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer: I am AetherAI, powered by Google Gemini 3.5 Flash. Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).' },
-        { role: 'user', content: query }
-      ],
-      temperature: 0.7
-    });
-
-    const options = {
-      hostname: 'api.openai.com',
-      port: 443,
-      path: '/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-
-    const apiReq = https.request(options, (apiRes) => {
-      let responseBody = '';
-      apiRes.on('data', (chunk) => {
-        responseBody += chunk;
-      });
-      apiRes.on('end', () => {
-        try {
-          const parsed = JSON.parse(responseBody);
-          if (apiRes.statusCode === 200 && parsed.choices && parsed.choices[0] && parsed.choices[0].message) {
-            const reply = parsed.choices[0].message.content;
-            res.json({ success: true, provider: 'openai', reply });
-          } else {
-            console.error('[OPENAI API ERROR RESPONSE]', parsed);
-            res.status(apiRes.statusCode || 500).json({ 
-              error: parsed.error?.message || `HTTP error ${apiRes.statusCode}`
-            });
-          }
-        } catch (e) {
-          console.error('[OPENAI PARSE ERROR]', e);
-          res.status(500).json({ error: 'Failed to parse AI response.', details: e.message });
-        }
-      });
-    });
-
-    apiReq.on('error', (err) => {
-      console.error('[OPENAI NETWORK ERROR]', err);
-      res.status(500).json({ error: 'Network failure communicating with OpenAI.', details: err.message });
-    });
-
-    apiReq.write(postData);
-    apiReq.end();
-  } catch (err) {
-    console.error('[OPENAI ROUTE ERROR]', err);
-    res.status(500).json({ error: 'Failed to communicate with AI model.', details: err.message });
-  }
+  // Only Gemini is supported. No OpenAI fallback.
+  res.status(400).json({ error: 'Only Gemini API keys are supported. Please set a valid Gemini API key.' });
 
 });
 
