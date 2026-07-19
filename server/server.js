@@ -409,17 +409,32 @@ app.post('/api/aether-chat', async (req, res) => {
       req.end();
     });
 
+    // Helper: extract retry-after seconds from Gemini 429 error message
+    const getRetryDelay = (parsed) => {
+      try {
+        const msg = parsed?.error?.message || '';
+        const match = msg.match(/retry in ([\d.]+)s/i);
+        return match ? Math.ceil(parseFloat(match[1])) * 1000 : 20000; // default 20s
+      } catch { return 20000; }
+    };
+
+    // Helper: sleep for ms milliseconds
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     try {
       // First attempt with the selected/default model
       let { statusCode, body } = await callGemini(targetGeminiModel);
       let parsed = JSON.parse(body);
 
-      // If rate-limited (429), auto-fallback to gemini-flash-latest
-      if (statusCode === 429 && targetGeminiModel !== 'gemini-flash-latest') {
-        console.warn(`[GEMINI] Rate limit hit on ${targetGeminiModel}. Auto-retrying with gemini-flash-latest...`);
-        const fallback = await callGemini('gemini-flash-latest');
-        statusCode = fallback.statusCode;
-        parsed = JSON.parse(fallback.body);
+      // If rate-limited (429), wait the retry delay then retry
+      if (statusCode === 429) {
+        const delay = getRetryDelay(parsed);
+        const waitSec = Math.round(delay / 1000);
+        console.warn(`[GEMINI] Rate limit hit on ${targetGeminiModel}. Waiting ${waitSec}s then retrying...`);
+        await sleep(Math.min(delay, 35000)); // wait (max 35s)
+        const retry = await callGemini(targetGeminiModel);
+        statusCode = retry.statusCode;
+        parsed = JSON.parse(retry.body);
       }
 
       const reply = parsed.candidates?.[0]?.content?.parts?.[0]?.text;

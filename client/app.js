@@ -395,11 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // First, attempt to query the secure server ChatGPT proxy!
     try {
       const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 2.5 Flash';
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 45000); // 45s timeout for server-side retry wait
       const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, model: selectedModelName })
+        body: JSON.stringify({ query: query, model: selectedModelName }),
+        signal: controller.signal
       });
+      clearTimeout(fetchTimeout);
       const chatData = await response.json();
       if (chatData.success && (chatData.provider === 'openai' || chatData.provider === 'gemini')) {
         answerText = chatData.reply;
@@ -407,9 +411,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceUrl = chatData.provider === 'gemini' ? "https://aistudio.google.com" : "https://openai.com";
         foundPrebaked = true;
       } else if (chatData.error) {
-        answerText = `⚠️ AI API Error: ${chatData.error}\n\nPlease check your API key validity, usage limits, or Billing account balance.`;
+        // Show a friendly message - hide raw API quota error
+        const isQuota = chatData.error.toLowerCase().includes('quota') || chatData.error.toLowerCase().includes('rate');
+        answerText = isQuota
+          ? `⏳ AetherAI is processing your request... The AI is busy right now. Please try again in a moment.`
+          : `⚠️ AI API Error: ${chatData.error}\n\nPlease check your API key validity, usage limits, or Billing account balance.`;
         sourceTitle = "AI Error Telemetry";
-        sourceUrl = "https://platform.openai.com";
+        sourceUrl = "https://ai.google.dev";
         foundPrebaked = true;
       }
     } catch (err) {
