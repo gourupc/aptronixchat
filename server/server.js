@@ -5,6 +5,9 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const https = require('https');
+
+
 
 const app = express();
 app.use(cors());
@@ -299,33 +302,63 @@ app.post('/api/aether-chat', async (req, res) => {
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const postData = JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.' },
+        { role: 'user', content: query }
+      ],
+      temperature: 0.7
+    });
+
+    const options = {
+      hostname: 'api.openai.com',
+      port: 443,
+      path: '/v1/chat/completions',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.' },
-          { role: 'user', content: query }
-        ],
-        temperature: 0.7
-      })
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let responseBody = '';
+      apiRes.on('data', (chunk) => {
+        responseBody += chunk;
+      });
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(responseBody);
+          if (apiRes.statusCode === 200 && parsed.choices && parsed.choices[0] && parsed.choices[0].message) {
+            const reply = parsed.choices[0].message.content;
+            res.json({ success: true, provider: 'openai', reply });
+          } else {
+            console.error('[OPENAI API ERROR RESPONSE]', parsed);
+            res.status(apiRes.statusCode || 500).json({ 
+              error: parsed.error?.message || `HTTP error ${apiRes.statusCode}`
+            });
+          }
+        } catch (e) {
+          console.error('[OPENAI PARSE ERROR]', e);
+          res.status(500).json({ error: 'Failed to parse AI response.', details: e.message });
+        }
+      });
     });
 
-    const data = await response.json();
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      const reply = data.choices[0].message.content;
-      return res.json({ success: true, provider: 'openai', reply });
-    } else {
-      throw new Error(data.error?.message || 'Invalid response schema from OpenAI API.');
-    }
+    apiReq.on('error', (err) => {
+      console.error('[OPENAI NETWORK ERROR]', err);
+      res.status(500).json({ error: 'Network failure communicating with OpenAI.', details: err.message });
+    });
+
+    apiReq.write(postData);
+    apiReq.end();
   } catch (err) {
-    console.error('[OPENAI PROXY ERROR]', err);
-    return res.status(500).json({ error: 'Failed to communicate with AI model.', details: err.message });
+    console.error('[OPENAI ROUTE ERROR]', err);
+    res.status(500).json({ error: 'Failed to communicate with AI model.', details: err.message });
   }
+
 });
 
 
