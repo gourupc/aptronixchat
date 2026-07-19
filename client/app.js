@@ -394,10 +394,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // First, attempt to query the secure server ChatGPT proxy!
     try {
+      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 2.5 Flash';
       const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query })
+        body: JSON.stringify({ query: query, model: selectedModelName })
       });
       const chatData = await response.json();
       if (chatData.success && (chatData.provider === 'openai' || chatData.provider === 'gemini')) {
@@ -465,9 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     typingInterval = setInterval(() => {
       if (charIndex < answerText.length) {
-        const currentSubstring = answerText.substring(0, charIndex + 1);
+        charIndex += 4; // Type 4 characters at once for lightning fast output!
+        const currentSubstring = answerText.substring(0, charIndex);
         agentMsgDiv.innerHTML = parseMarkdown(currentSubstring);
-        charIndex++;
         if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
       } else {
         clearInterval(typingInterval);

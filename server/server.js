@@ -347,7 +347,7 @@ app.get('/api/aether-status', (req, res) => {
 
 // Secure proxy endpoint to communicate with OpenAI ChatGPT API
 app.post('/api/aether-chat', async (req, res) => {
-  const { query } = req.body;
+  const { query, model } = req.body;
   if (!query) {
     return res.status(400).json({ error: 'Query is required.' });
   }
@@ -373,6 +373,14 @@ app.post('/api/aether-chat', async (req, res) => {
 
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
+    // Map selected model names to active Google Generative API equivalents
+    let targetGeminiModel = 'gemini-flash-latest';
+    if (model === 'Gemini 2.5 Pro') {
+      targetGeminiModel = 'gemini-2.5-pro';
+    } else if (model === 'Gemini 3.5 Flash') {
+      targetGeminiModel = 'gemini-3.5-flash';
+    }
+
     try {
       const postData = JSON.stringify({
         contents: [
@@ -391,7 +399,7 @@ app.post('/api/aether-chat', async (req, res) => {
       const options = {
         hostname: 'generativelanguage.googleapis.com',
         port: 443,
-        path: `/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
+        path: `/v1beta/models/${targetGeminiModel}:generateContent?key=${apiKey}`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
