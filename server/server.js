@@ -374,11 +374,11 @@ app.post('/api/aether-chat', async (req, res) => {
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     // Map selected model names to active Google Generative API equivalents
-    let targetGeminiModel = 'gemini-flash-latest';
+    let targetGeminiModel = 'gemini-3.5-flash';
     if (model === 'Gemini 2.5 Pro') {
       targetGeminiModel = 'gemini-2.5-pro';
-    } else if (model === 'Gemini 3.5 Flash') {
-      targetGeminiModel = 'gemini-3.5-flash';
+    } else if (model === 'Gemini 2.5 Flash') {
+      targetGeminiModel = 'gemini-flash-latest';
     }
 
     try {
