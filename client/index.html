@@ -528,12 +528,7 @@
           <input type="text" id="admin-new-passcode" placeholder="Enter new passcode..." autocomplete="off">
         </div>
 
-        <div class="admin-toggle-field">
-          <label class="admin-checkbox-label">
-            <input type="checkbox" id="admin-require-otp-checkbox">
-            Require Email OTP for passcode changes
-          </label>
-        </div>
+        <!-- OTP is permanently required, toggle checkbox removed -->
 
         <button type="button" id="admin-save-btn" class="btn-primary" style="margin-top: 10px;">
           Save Settings
@@ -556,6 +551,6 @@
   </div>
 
   <!-- Main Script - Deferred to run after HTML parsing completes (Socket.IO client library will load dynamically on start) -->
-  <script src="app.js?v=5" defer></script>
+  <script src="app.js?v=6" defer></script>
 </body>
 </html>

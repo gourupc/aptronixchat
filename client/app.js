@@ -2903,7 +2903,6 @@ function openAdminPortal() {
   const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
   const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
   const adminNewPasscode = document.getElementById('admin-new-passcode');
-  const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
   const adminSettingsForm = document.getElementById('admin-settings-form');
   const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
   const adminOtpInput = document.getElementById('admin-otp-input');
@@ -2927,8 +2926,7 @@ function openAdminPortal() {
     .then(res => res.json())
     .then(data => {
       if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = data.currentPasscode;
-      if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = data.passcodeRequiredOtp ? 'Enabled (Email OTP)' : 'Disabled';
-      if (adminRequireOtpCheckbox) adminRequireOtpCheckbox.checked = data.passcodeRequiredOtp;
+      if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = 'Permanently Enabled';
     })
     .catch(err => {
       console.error('Failed to load admin config:', err);
@@ -2970,7 +2968,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (adminSaveBtn) {
     adminSaveBtn.addEventListener('click', () => {
       const adminNewPasscode = document.getElementById('admin-new-passcode');
-      const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
       const adminPortalMessage = document.getElementById('admin-portal-message');
       const adminSettingsForm = document.getElementById('admin-settings-form');
       const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
@@ -2988,8 +2985,7 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          newPasscode: adminNewPasscode.value.trim(),
-          requireOtp: adminRequireOtpCheckbox ? adminRequireOtpCheckbox.checked : false
+          newPasscode: adminNewPasscode.value.trim()
         })
       })
       .then(res => res.json())
@@ -3005,15 +3001,6 @@ document.addEventListener('DOMContentLoaded', () => {
           adminPortalMessage.textContent = data.message;
           if (adminSettingsForm) adminSettingsForm.classList.add('hidden');
           if (adminOtpVerificationPanel) adminOtpVerificationPanel.classList.remove('hidden');
-        } else {
-          adminPortalMessage.className = 'admin-portal-message success';
-          adminPortalMessage.textContent = data.message;
-          
-          // Refresh configuration displays
-          const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
-          const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
-          if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = adminNewPasscode.value.trim();
-          if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = (adminRequireOtpCheckbox && adminRequireOtpCheckbox.checked) ? 'Enabled (Email OTP)' : 'Disabled';
         }
       })
       .catch(err => {
@@ -3031,7 +3018,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const adminSettingsForm = document.getElementById('admin-settings-form');
       const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
       const adminNewPasscode = document.getElementById('admin-new-passcode');
-      const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
 
       if (!adminOtpInput || !adminOtpInput.value.trim()) {
         adminPortalMessage.className = 'admin-portal-message error';
@@ -3064,9 +3050,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Refresh configuration displays
         const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
-        const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
         if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = adminNewPasscode.value.trim();
-        if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = (adminRequireOtpCheckbox && adminRequireOtpCheckbox.checked) ? 'Enabled (Email OTP)' : 'Disabled';
       })
       .catch(err => {
         console.error(err);

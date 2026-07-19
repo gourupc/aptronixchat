@@ -46,7 +46,7 @@ const SCRIPT_SECRET = 'doremon2024';
 // Flag to control email notifications
 let emailAlertsEnabled = true;
 let currentMessengerPasscode = 'golu0805';
-let passcodeRequiredOtp = false;
+let passcodeRequiredOtp = true;
 let pendingPasscodeChange = null;
 
 
@@ -337,57 +337,48 @@ app.get('/api/admin/config', (req, res) => {
 
 // 2. POST Admin request passcode update
 app.post('/api/admin/request-change', async (req, res) => {
-  const { newPasscode, requireOtp } = req.body;
+  const { newPasscode } = req.body;
   if (!newPasscode || newPasscode.toString().trim().length < 4) {
     return res.status(400).json({ error: 'Passcode must be at least 4 characters long.' });
   }
 
-  // If OTP is required on the server currently to perform any admin action:
-  if (passcodeRequiredOtp) {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate 6-digit OTP
-    pendingPasscodeChange = {
-      newPasscode: newPasscode.toString().trim(),
-      requireOtp: requireOtp === true,
-      otp: otpCode,
-      expires: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
-    };
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate 6-digit OTP
+  pendingPasscodeChange = {
+    newPasscode: newPasscode.toString().trim(),
+    requireOtp: true,
+    otp: otpCode,
+    expires: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
+  };
 
-    const emailBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <h2 style="color: #2481cc; margin-top: 0; font-size: 22px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
-          🔑 Security OTP for Password Change
-        </h2>
-        <p style="font-size: 15px; line-height: 1.5; color: #4a5568;">
-          An administrator has requested to change the AetherAIFree Messenger entry passcode.
-        </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #e53e3e; background: #fff5f5; padding: 10px 20px; border: 1px solid #feb2b2; border-radius: 8px; display: inline-block;">
-            ${otpCode}
-          </span>
-        </div>
-        <p style="font-size: 14px; color: #718096; line-height: 1.4;">
-          Please enter this 6-digit OTP code in the Admin Panel to verify and complete this action. This code is valid for 10 minutes.
-        </p>
-        <div style="border-top: 1px solid #edf2f7; padding-top: 15px; margin-top: 20px; font-size: 12px; color: #a0aec0; text-align: center;">
-          This alert was generated automatically by AetherAIFree Gateway. Secure HTTPS Pipeline.
-        </div>
+  const emailBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+      <h2 style="color: #2481cc; margin-top: 0; font-size: 22px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
+        🔑 Security OTP for Password Change
+      </h2>
+      <p style="font-size: 15px; line-height: 1.5; color: #4a5568;">
+        An administrator has requested to change the AetherAIFree Messenger entry passcode.
+      </p>
+      <div style="text-align: center; margin: 30px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #e53e3e; background: #fff5f5; padding: 10px 20px; border: 1px solid #feb2b2; border-radius: 8px; display: inline-block;">
+          ${otpCode}
+        </span>
       </div>
-    `;
+      <p style="font-size: 14px; color: #718096; line-height: 1.4;">
+        Please enter this 6-digit OTP code in the Admin Panel to verify and complete this action. This code is valid for 10 minutes.
+      </p>
+      <div style="border-top: 1px solid #edf2f7; padding-top: 15px; margin-top: 20px; font-size: 12px; color: #a0aec0; text-align: center;">
+        This alert was generated automatically by AetherAIFree Gateway. Secure HTTPS Pipeline.
+      </div>
+    </div>
+  `;
 
-    try {
-      await sendAdminEmail('🔑 AetherAIFree - Admin Passcode Update Security OTP', emailBody);
-      console.log(`[ADMIN CONFIG] OTP sent to admin for password change request.`);
-      return res.json({ otpRequired: true, message: 'A security OTP has been sent to the administrator email.' });
-    } catch (e) {
-      return res.status(500).json({ error: 'Failed to send verification email. Please check server configuration.' });
-    }
+  try {
+    await sendAdminEmail('🔑 AetherAIFree - Admin Passcode Update Security OTP', emailBody);
+    console.log(`[ADMIN CONFIG] OTP sent to admin for password change request.`);
+    return res.json({ otpRequired: true, message: 'A security OTP has been sent to the administrator email.' });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to send verification email. Please check server configuration.' });
   }
-
-  // If OTP is NOT required, apply changes immediately!
-  currentMessengerPasscode = newPasscode.toString().trim();
-  passcodeRequiredOtp = (requireOtp === true);
-  console.log(`[ADMIN CONFIG] Passcode updated immediately to: ${currentMessengerPasscode} | OTP requirement set to: ${passcodeRequiredOtp}`);
-  return res.json({ otpRequired: false, success: true, message: 'Messenger passcode updated successfully.' });
 });
 
 // 3. POST Admin verify passcode update OTP
