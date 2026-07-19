@@ -644,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try { consoleRecognition.start(); } catch(e){}
       }
     });
+  }
   // --- Console Photo Upload Options ---
   if (consolePlusBtn && consoleFileInput) {
     consolePlusBtn.addEventListener('click', () => {
