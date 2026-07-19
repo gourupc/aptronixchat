@@ -7,7 +7,26 @@ const fs = require('fs');
 const multer = require('multer');
 const https = require('https');
 
-
+// Manual .env file loader to support zero-dependency environment config on local/Render setups
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const equalsIndex = line.indexOf('=');
+      if (equalsIndex > 0) {
+        const key = line.substring(0, equalsIndex).trim();
+        const value = line.substring(equalsIndex + 1).trim().replace(/^['"]|['"]$/g, '');
+        if (key && value && !process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    });
+    console.log('[ENV] Loaded variables from .env file successfully.');
+  }
+} catch (e) {
+  console.warn('[ENV] Optional .env file not loaded:', e.message);
+}
 
 const app = express();
 app.use(cors());
@@ -291,9 +310,16 @@ app.post('/api/aether-chat', async (req, res) => {
     return res.status(400).json({ error: 'Query is required.' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY || '';
+  const apiKey = (
+    process.env.OPENAI_API_KEY || 
+    process.env.OPENAI_KEY || 
+    process.env.CHATGPT_API_KEY || 
+    process.env.CHATGPT_KEY || 
+    ''
+  ).trim().replace(/^['"]|['"]$/g, '');
+
   if (!apiKey) {
-    // Return mock status if no key is configured yet
+    console.warn('[OPENAI PROXY] Request received but OpenAI API Key is not configured on the server environment.');
     return res.json({ 
       success: true, 
       provider: 'mock', 
