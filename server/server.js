@@ -385,7 +385,7 @@ app.post('/api/aether-chat', async (req, res) => {
       targetGeminiModel = 'gemini-3.1-flash-lite';
     }
 
-    const systemPrompt = `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash architecture. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).`;
+    const systemInstructionText = `You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks). If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.'`;
 
     const parts = [];
     if (image && image.data && image.mimeType) {
@@ -396,10 +396,13 @@ app.post('/api/aether-chat', async (req, res) => {
         }
       });
     }
-    parts.push({ text: `${systemPrompt}\n\nUser Question: ${query}` });
+    parts.push({ text: query });
 
     const postData = JSON.stringify({
       contents: [{ role: 'user', parts: parts }],
+      systemInstruction: {
+        parts: [{ text: systemInstructionText }]
+      },
       generationConfig: { temperature: 0.7 }
     });
 
