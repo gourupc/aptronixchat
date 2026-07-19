@@ -292,6 +292,7 @@ body, html {
   height: -webkit-fill-available;
   height: 100dvh;
   height: calc(var(--vh, 1vh) * 100);
+  overflow: hidden;
 }
 
 /* --- Sidebar --- */
@@ -302,6 +303,8 @@ body, html {
   flex-direction: column;
   height: 100%;
   transition: background-color var(--transition-speed), border-color var(--transition-speed);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -581,6 +584,8 @@ body, html {
   background-image: radial-gradient(rgba(127, 145, 164, 0.05) 1px, transparent 0);
   background-size: 20px 20px;
   position: relative;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -2046,6 +2051,8 @@ body, html {
     z-index: 4;
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.25, 1);
+    min-height: 0;
+    overflow: hidden;
   }
 
   /* Prevent auto-zooming on input focus on iOS/mobile */
