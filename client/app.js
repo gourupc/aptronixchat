@@ -448,11 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
                   if (!started) { started = true; }
                 } else if (evt.type === 'done') {
-                  // Stream complete — append citation
-                  const citationDiv = document.createElement('div');
-                  citationDiv.style.cssText = 'margin-top:10px;font-size:0.72rem;display:flex;gap:6px;';
-                  citationDiv.innerHTML = `<span style="color:#718096;">Citation:</span><a href="https://aistudio.google.com" target="_blank" style="color:#00f0ff;text-decoration:underline;">[1] Google Gemini Engine</a>`;
-                  agentMsgDiv.appendChild(citationDiv);
                   if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
                 } else if (evt.type === 'error') {
                   const isQuota = (evt.error || '').toLowerCase().includes('quota') || (evt.error || '').toLowerCase().includes('rate');
@@ -548,18 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         clearInterval(typingInterval);
         typingInterval = null;
-        
-        // Append Source Citations beneath message
-        const citationDiv = document.createElement('div');
-        citationDiv.style.marginTop = '10px';
-        citationDiv.style.fontSize = '0.72rem';
-        citationDiv.style.display = 'flex';
-        citationDiv.style.gap = '6px';
-        citationDiv.innerHTML = `
-          <span style="color: #718096;">Citation:</span>
-          <a href="${sourceUrl}" target="_blank" style="color: #00f0ff; text-decoration: underline;">[1] ${sourceTitle}</a>
-        `;
-        agentMsgDiv.appendChild(citationDiv);
         if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
       }
     }, 8);

@@ -385,7 +385,7 @@ app.post('/api/aether-chat', async (req, res) => {
       targetGeminiModel = 'gemini-3.1-flash-lite';
     }
 
-    const systemInstructionText = `You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks). If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.'`;
+    const systemInstructionText = `Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks). Do NOT introduce yourself or prefix your response with system metadata or self-identifications.`;
 
     const parts = [];
     if (image && image.data && image.mimeType) {
