@@ -47,7 +47,16 @@
         <div class="console-search-bar">
           <!-- Search input on top line -->
           <input type="text" id="ai-search-input" placeholder="How can I help you today?" autocomplete="off">
+          <!-- Image preview row -->
+          <div id="console-img-preview-container" class="console-img-preview-container hidden">
+            <div class="console-img-preview-wrapper">
+              <img id="console-img-preview" src="" alt="Preview">
+              <button type="button" id="console-img-remove-btn" class="console-img-remove-btn">&times;</button>
+            </div>
+          </div>
           
+          <input type="file" id="console-file-input" accept="image/*" style="display: none;">
+
           <!-- Controls row on bottom line -->
           <div class="console-controls-row">
             <button type="button" class="console-control-btn btn-plus" title="Add source">

@@ -2476,4 +2476,50 @@ body, html {
   transform: scale(0.95);
 }
 
+/* Console Image Preview styles */
+.console-img-preview-container {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 4px;
+}
+.console-img-preview-container.hidden {
+  display: none !important;
+}
+.console-img-preview-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--agent-input-border, rgba(255,255,255,0.08));
+}
+.console-img-preview-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.console-img-remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+.console-img-remove-btn:hover {
+  background: #ff4a4a;
+}
+
+
 

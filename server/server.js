@@ -347,7 +347,7 @@ app.get('/api/aether-status', (req, res) => {
 
 // Secure proxy endpoint to communicate with OpenAI ChatGPT API
 app.post('/api/aether-chat', async (req, res) => {
-  const { query, model } = req.body;
+  const { query, model, image } = req.body;
   if (!query) {
     return res.status(400).json({ error: 'Query is required.' });
   }
@@ -387,8 +387,19 @@ app.post('/api/aether-chat', async (req, res) => {
 
     const systemPrompt = `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash architecture. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).`;
 
+    const parts = [];
+    if (image && image.data && image.mimeType) {
+      parts.push({
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data
+        }
+      });
+    }
+    parts.push({ text: `${systemPrompt}\n\nUser Question: ${query}` });
+
     const postData = JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${query}` }] }],
+      contents: [{ role: 'user', parts: parts }],
       generationConfig: { temperature: 0.7 }
     });
 

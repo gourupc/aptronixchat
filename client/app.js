@@ -227,6 +227,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeIconSvg = document.getElementById('agent-theme-icon');
   const modelSelectorPill = document.getElementById('console-model-selector');
   const modelDropdownPanel = document.getElementById('model-dropdown');
+  const consolePlusBtn = document.querySelector('.btn-plus');
+  const consoleFileInput = document.getElementById('console-file-input');
+  const consoleImgPreviewContainer = document.getElementById('console-img-preview-container');
+  const consoleImgPreview = document.getElementById('console-img-preview');
+  const consoleImgRemoveBtn = document.getElementById('console-img-remove-btn');
+  let consoleAttachedImage = null; // Stores { mimeType, data (base64) }
 
   // Verify stored session unlock status
   if (sessionStorage.getItem('gate_unlocked') === 'true') {
@@ -398,10 +404,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const controller = new AbortController();
       const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
+      // Capture attached image and clear state immediately
+      const imagePayload = consoleAttachedImage;
+      if (consoleImgRemoveBtn) consoleImgRemoveBtn.click();
+
       const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, model: selectedModelName }),
+        body: JSON.stringify({ query: query, model: selectedModelName, image: imagePayload }),
         signal: controller.signal
       });
       clearTimeout(fetchTimeout);
@@ -632,6 +642,51 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         if (aiSearchInput) aiSearchInput.value = '';
         try { consoleRecognition.start(); } catch(e){}
+      }
+    });
+  // --- Console Photo Upload Options ---
+  if (consolePlusBtn && consoleFileInput) {
+    consolePlusBtn.addEventListener('click', () => {
+      consoleFileInput.click();
+    });
+
+    consoleFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file (PNG, JPG, WebP, etc.)');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Data = event.target.result.split(',')[1];
+        consoleAttachedImage = {
+          mimeType: file.type,
+          data: base64Data
+        };
+
+        if (consoleImgPreview) {
+          consoleImgPreview.src = event.target.result;
+        }
+        if (consoleImgPreviewContainer) {
+          consoleImgPreviewContainer.classList.remove('hidden');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (consoleImgRemoveBtn) {
+    consoleImgRemoveBtn.addEventListener('click', () => {
+      consoleAttachedImage = null;
+      if (consoleFileInput) consoleFileInput.value = '';
+      if (consoleImgPreviewContainer) {
+        consoleImgPreviewContainer.classList.add('hidden');
+      }
+      if (consoleImgPreview) {
+        consoleImgPreview.src = '';
       }
     });
   }
