@@ -310,6 +310,8 @@ app.get('/api/aether-status', (req, res) => {
     process.env.OPENAI_KEY || 
     process.env.CHATGPT_API_KEY || 
     process.env.CHATGPT_KEY || 
+    process.env.key || 
+    process.env.KEY || 
     ''
   ).trim().replace(/^['"]|['"]$/g, '');
 
@@ -334,6 +336,8 @@ app.post('/api/aether-chat', async (req, res) => {
     process.env.OPENAI_KEY || 
     process.env.CHATGPT_API_KEY || 
     process.env.CHATGPT_KEY || 
+    process.env.key || 
+    process.env.KEY || 
     ''
   ).trim().replace(/^['"]|['"]$/g, '');
 
