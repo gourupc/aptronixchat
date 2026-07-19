@@ -224,8 +224,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const securityMaskGate = document.getElementById('security-mask-gate');
   const aiSearchInput = document.getElementById('ai-search-input');
   const aiSearchBtn = document.getElementById('ai-search-btn');
-  const aiResultsPanel = document.getElementById('ai-results-panel');
-  const aiResponseContent = document.getElementById('ai-response-content');
+  const themeToggleBtn = document.getElementById('agent-theme-toggle');
+  const themeIconSvg = document.getElementById('agent-theme-icon');
+  const modelSelectorPill = document.getElementById('console-model-selector');
+  const modelDropdownPanel = document.getElementById('model-dropdown');
 
   // Verify stored session unlock status
   if (sessionStorage.getItem('gate_unlocked') === 'true') {
@@ -238,6 +240,85 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ metadata: getClientMetadata() })
     }).catch(err => console.error("Session entry alert failed:", err));
   }
+
+  // 1. Dynamic greeting based on time of day (Morning/Afternoon/Evening)
+  const getGreetingText = () => {
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) return 'Good Morning';
+    if (hours >= 12 && hours < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+  const greetingTitle = document.querySelector('.serif-title');
+  if (greetingTitle) {
+    greetingTitle.textContent = `${getGreetingText()}, Explorer`;
+  }
+
+  // 2. Premium Light/Dark Theme Switcher Logic
+  const updateThemeUI = (isDark) => {
+    if (securityMaskGate) {
+      if (isDark) {
+        securityMaskGate.classList.remove('light-theme');
+        securityMaskGate.classList.add('dark-theme');
+        // Moon Icon path
+        if (themeIconSvg) {
+          themeIconSvg.innerHTML = `<path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.3-9.7.7-.1 1.3.4 1.4 1.1.1.7-.4 1.3-1.1 1.4-3.4.5-5.9 3.4-5.9 6.9 0 3.9 3.2 7.1 7.1 7.1 3.5 0 6.4-2.5 6.9-5.9.1-.7.7-1.1 1.4-1.1.7.1 1.2.7 1.1 1.4-.9 4.7-4.9 8.2-9.7 8.2z"/>`;
+        }
+      } else {
+        securityMaskGate.classList.remove('dark-theme');
+        securityMaskGate.classList.add('light-theme');
+        // Sun Icon path
+        if (themeIconSvg) {
+          themeIconSvg.innerHTML = `<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-.39-1.03 0-1.41s1.03-.39 1.41 0l1.06 1.06c.39.39.39 1.03 0 1.41s-1.03.39-1.41 0l-1.06-1.06zm-12.37 12.37c-.39-.39-.39-1.03 0-1.41s1.03-.39 1.41 0l1.06 1.06c.39.39.39 1.03 0 1.41s-1.03.39-1.41 0l-1.06-1.06z"/>`;
+        }
+      }
+    }
+  };
+
+  // Init theme from localStorage
+  const savedTheme = localStorage.getItem('agent-theme') || 'light';
+  updateThemeUI(savedTheme === 'dark');
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const isCurrentlyDark = securityMaskGate.classList.contains('dark-theme');
+      const nextIsDark = !isCurrentlyDark;
+      localStorage.setItem('agent-theme', nextIsDark ? 'dark' : 'light');
+      updateThemeUI(nextIsDark);
+    });
+  }
+
+  // 3. Model Selector Dropdown functionality
+  if (modelSelectorPill && modelDropdownPanel) {
+    modelSelectorPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modelDropdownPanel.classList.toggle('hidden');
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', () => {
+      modelDropdownPanel.classList.add('hidden');
+    });
+
+    // Handle selecting options in dropdown
+    modelDropdownPanel.querySelectorAll('.model-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const selectedModelName = option.getAttribute('data-model');
+        
+        // Update Selector pill text
+        const pillText = modelSelectorPill.querySelector('span');
+        if (pillText) pillText.textContent = selectedModelName;
+
+        // Toggle active states
+        modelDropdownPanel.querySelectorAll('.model-option').forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+
+        // Hide Dropdown
+        modelDropdownPanel.classList.add('hidden');
+      });
+    });
+  }
+
 
 
   // Dictionary of mock AI response texts
