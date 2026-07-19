@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `⏳ AetherAI is busy right now. Please try again in a moment.`
                     : `⚠️ ${evt.error}`;
                 } else if (evt.type === 'retry') {
-                  agentMsgDiv.innerHTML = `⏳ High traffic — retrying your request automatically...`;
+                  agentMsgDiv.innerHTML = `⏳ ${evt.message || 'High traffic — retrying your request automatically...'}`;
                 }
               } catch (e) { /* skip malformed SSE lines */ }
             }
