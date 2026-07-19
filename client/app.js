@@ -579,43 +579,48 @@ document.addEventListener('DOMContentLoaded', () => {
   let consoleRecognition = null;
 
   if (window.SpeechRecognition || window.webkitSpeechRecognition) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    consoleRecognition = new SpeechRecognition();
-    consoleRecognition.continuous = false;
-    consoleRecognition.lang = 'en-US';
-    consoleRecognition.interimResults = false;
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      consoleRecognition = new SpeechRecognition();
+      consoleRecognition.continuous = false;
+      consoleRecognition.lang = 'en-US';
+      consoleRecognition.interimResults = false;
 
-    consoleRecognition.onstart = () => {
-      isConsoleListening = true;
-      if (consoleMicBtn) {
-        consoleMicBtn.style.color = '#ff4a4a'; // Glow red
-        consoleMicBtn.style.transform = 'scale(1.1)';
-        consoleMicBtn.title = 'Listening... Click to stop';
-      }
-      if (aiSearchInput) {
-        aiSearchInput.value = '';
-        aiSearchInput.placeholder = 'Listening... Speak now.';
-      }
-    };
+      consoleRecognition.onstart = () => {
+        isConsoleListening = true;
+        if (consoleMicBtn) {
+          consoleMicBtn.style.color = '#ff4a4a'; // Glow red
+          consoleMicBtn.style.transform = 'scale(1.1)';
+          consoleMicBtn.title = 'Listening... Click to stop';
+        }
+        if (aiSearchInput) {
+          aiSearchInput.value = '';
+          aiSearchInput.placeholder = 'Listening... Speak now.';
+        }
+      };
 
-    consoleRecognition.onresult = (event) => {
-      const speechToText = event.results[0][0].transcript;
-      if (aiSearchInput) {
-        aiSearchInput.value = speechToText;
-      }
-    };
+      consoleRecognition.onresult = (event) => {
+        const speechToText = event.results[0][0].transcript;
+        if (aiSearchInput) {
+          aiSearchInput.value = speechToText;
+        }
+      };
 
-    consoleRecognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      stopConsoleListening();
-    };
+      consoleRecognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopConsoleListening();
+      };
 
-    consoleRecognition.onend = () => {
-      stopConsoleListening();
-      if (aiSearchInput && aiSearchInput.value.trim().length > 0) {
-        handleAISearch();
-      }
-    };
+      consoleRecognition.onend = () => {
+        stopConsoleListening();
+        if (aiSearchInput && aiSearchInput.value.trim().length > 0) {
+          handleAISearch();
+        }
+      };
+    } catch (e) {
+      console.warn('Speech recognition instantiation failed:', e.message);
+      consoleRecognition = null;
+    }
   }
 
   function stopConsoleListening() {
