@@ -440,36 +440,55 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Wait a brief moment for animation feel
-    setTimeout(() => {
-      agentMsgDiv.textContent = '';
-      let charIndex = 0;
-      if (typingInterval) clearInterval(typingInterval);
-      
-      typingInterval = setInterval(() => {
-        if (charIndex < answerText.length) {
-          agentMsgDiv.textContent += answerText.charAt(charIndex);
-          charIndex++;
-          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-        } else {
-          clearInterval(typingInterval);
-          typingInterval = null;
-          
-          // Append Source Citations beneath message
-          const citationDiv = document.createElement('div');
-          citationDiv.style.marginTop = '10px';
-          citationDiv.style.fontSize = '0.72rem';
-          citationDiv.style.display = 'flex';
-          citationDiv.style.gap = '6px';
-          citationDiv.innerHTML = `
-            <span style="color: #718096;">Citation:</span>
-            <a href="${sourceUrl}" target="_blank" style="color: #00f0ff; text-decoration: underline;">[1] ${sourceTitle}</a>
-          `;
-          agentMsgDiv.appendChild(citationDiv);
-          if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-        }
-      }, 8);
-    }, 400);
+  const parseMarkdown = (text) => {
+    // Convert code blocks
+    let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+    // Convert inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Convert bold
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Convert italics
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Convert lists
+    html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+    // Convert paragraphs/breaks
+    html = html.replace(/\n\n/g, '<br><br>');
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  };
+
+  // Wait a brief moment for animation feel
+  setTimeout(() => {
+    agentMsgDiv.textContent = '';
+    let charIndex = 0;
+    if (typingInterval) clearInterval(typingInterval);
+    
+    typingInterval = setInterval(() => {
+      if (charIndex < answerText.length) {
+        const currentSubstring = answerText.substring(0, charIndex + 1);
+        agentMsgDiv.innerHTML = parseMarkdown(currentSubstring);
+        charIndex++;
+        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      } else {
+        clearInterval(typingInterval);
+        typingInterval = null;
+        
+        // Append Source Citations beneath message
+        const citationDiv = document.createElement('div');
+        citationDiv.style.marginTop = '10px';
+        citationDiv.style.fontSize = '0.72rem';
+        citationDiv.style.display = 'flex';
+        citationDiv.style.gap = '6px';
+        citationDiv.innerHTML = `
+          <span style="color: #718096;">Citation:</span>
+          <a href="${sourceUrl}" target="_blank" style="color: #00f0ff; text-decoration: underline;">[1] ${sourceTitle}</a>
+        `;
+        agentMsgDiv.appendChild(citationDiv);
+        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      }
+    }, 8);
+  }, 400);
   };
 
   if (aiSearchBtn) aiSearchBtn.addEventListener('click', handleAISearch);
