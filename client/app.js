@@ -371,7 +371,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // If not prebaked, query Wikipedia dynamically
+    // First, attempt to query the secure server ChatGPT proxy!
+    try {
+      const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+      });
+      const chatData = await response.json();
+      if (chatData.success && chatData.provider === 'openai') {
+        answerText = chatData.reply;
+        sourceTitle = "OpenAI GPT-4o Engine";
+        sourceUrl = "https://openai.com";
+        foundPrebaked = true;
+      }
+    } catch (err) {
+      console.warn("ChatGPT API proxy query failed, trying local fallback:", err);
+    }
+
+    // If ChatGPT is not configured or failed, query Wikipedia dynamically as fallback
     if (!foundPrebaked) {
       try {
         const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
@@ -395,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Wikipedia search fetch error:", err);
       }
     }
+
 
     // Append Typing Agent Bubble
     const agentMsgDiv = appendAgentChatMessage('Thinking...', 'agent');

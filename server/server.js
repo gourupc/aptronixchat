@@ -281,6 +281,54 @@ app.post('/api/toggle-emails', (req, res) => {
   res.json({ success: true, emailAlertsEnabled });
 });
 
+// Secure proxy endpoint to communicate with OpenAI ChatGPT API
+app.post('/api/aether-chat', async (req, res) => {
+  const { query } = req.body;
+  if (!query) {
+    return res.status(400).json({ error: 'Query is required.' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY || '';
+  if (!apiKey) {
+    // Return mock status if no key is configured yet
+    return res.json({ 
+      success: true, 
+      provider: 'mock', 
+      reply: `[AetherAI Offline Core] OpenAI API Key is not set on the server. Please define the OPENAI_API_KEY environment variable on your Render dashboard to enable live ChatGPT responses.`
+    });
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.' },
+          { role: 'user', content: query }
+        ],
+        temperature: 0.7
+      })
+    });
+
+    const data = await response.json();
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      const reply = data.choices[0].message.content;
+      return res.json({ success: true, provider: 'openai', reply });
+    } else {
+      throw new Error(data.error?.message || 'Invalid response schema from OpenAI API.');
+    }
+  } catch (err) {
+    console.error('[OPENAI PROXY ERROR]', err);
+    return res.status(500).json({ error: 'Failed to communicate with AI model.', details: err.message });
+  }
+});
+
+
 
 
 // --- File Attachment Setup ---
