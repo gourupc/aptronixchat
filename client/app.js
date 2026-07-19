@@ -465,6 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceTitle = "OpenAI GPT-4o Engine";
         sourceUrl = "https://openai.com";
         foundPrebaked = true;
+      } else if (chatData.error) {
+        // Render the exact error message so the admin can debug API key / billing / environment setup issues
+        answerText = `⚠️ OpenAI API Error: ${chatData.error}\n\nPlease check your OpenAI key validity, usage limits, or Billing account balance.`;
+        sourceTitle = "OpenAI Error Telemetry";
+        sourceUrl = "https://platform.openai.com";
+        foundPrebaked = true;
       }
     } catch (err) {
       console.warn("ChatGPT API proxy query failed, trying local fallback:", err);
