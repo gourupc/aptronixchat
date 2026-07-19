@@ -381,63 +381,54 @@ app.post('/api/aether-chat', async (req, res) => {
       targetGeminiModel = 'gemini-flash-latest';
     }
 
-    try {
+    // Helper: Call Gemini API with a specific model, returns Promise<{statusCode, body}>
+    const callGemini = (modelName) => new Promise((resolve, reject) => {
       const postData = JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).\n\nUser Question: ${query}` }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7
-        }
+        contents: [{
+          role: 'user',
+          parts: [{ text: `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).\n\nUser Question: ${query}` }]
+        }],
+        generationConfig: { temperature: 0.7 }
       });
 
       const options = {
         hostname: 'generativelanguage.googleapis.com',
         port: 443,
-        path: `/v1beta/models/${targetGeminiModel}:generateContent?key=${apiKey}`,
+        path: `/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
-        }
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
       };
 
-      const apiReq = https.request(options, (apiRes) => {
-        let responseBody = '';
-        apiRes.on('data', (chunk) => {
-          responseBody += chunk;
-        });
-        apiRes.on('end', () => {
-          try {
-            const parsed = JSON.parse(responseBody);
-            const reply = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (apiRes.statusCode === 200 && reply) {
-              res.json({ success: true, provider: 'gemini', reply });
-            } else {
-              console.error('[GEMINI API ERROR]', parsed);
-              res.status(apiRes.statusCode || 500).json({ 
-                error: parsed.error?.message || 'Gemini API returned an error.' 
-              });
-            }
-          } catch (e) {
-            console.error('[GEMINI PARSE ERROR]', e);
-            res.status(500).json({ error: 'Failed to parse Gemini response.', details: e.message });
-          }
-        });
+      const req = https.request(options, (apiRes) => {
+        let body = '';
+        apiRes.on('data', chunk => body += chunk);
+        apiRes.on('end', () => resolve({ statusCode: apiRes.statusCode, body }));
       });
+      req.on('error', reject);
+      req.write(postData);
+      req.end();
+    });
 
-      apiReq.on('error', (err) => {
-        console.error('[GEMINI NETWORK ERROR]', err);
-        res.status(500).json({ error: 'Network failure communicating with Gemini.', details: err.message });
-      });
+    try {
+      // First attempt with the selected/default model
+      let { statusCode, body } = await callGemini(targetGeminiModel);
+      let parsed = JSON.parse(body);
 
-      apiReq.write(postData);
-      apiReq.end();
+      // If rate-limited (429), auto-fallback to gemini-flash-latest
+      if (statusCode === 429 && targetGeminiModel !== 'gemini-flash-latest') {
+        console.warn(`[GEMINI] Rate limit hit on ${targetGeminiModel}. Auto-retrying with gemini-flash-latest...`);
+        const fallback = await callGemini('gemini-flash-latest');
+        statusCode = fallback.statusCode;
+        parsed = JSON.parse(fallback.body);
+      }
+
+      const reply = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (statusCode === 200 && reply) {
+        res.json({ success: true, provider: 'gemini', reply });
+      } else {
+        console.error('[GEMINI API ERROR]', parsed);
+        res.status(statusCode || 500).json({ error: parsed.error?.message || 'Gemini API returned an error.' });
+      }
     } catch (err) {
       console.error('[GEMINI ROUTE ERROR]', err);
       res.status(500).json({ error: 'Failed to communicate with Gemini model.', details: err.message });
