@@ -303,17 +303,38 @@ app.post('/api/toggle-emails', (req, res) => {
   res.json({ success: true, emailAlertsEnabled });
 });
 
+// Sanitize and filter out placeholder environment variable values (like literally "OPENAI_API_KEY")
+const getValidKey = (...keys) => {
+  for (const k of keys) {
+    if (k && typeof k === 'string') {
+      const cleaned = k.trim().replace(/^['"]|['"]$/g, '');
+      const lower = cleaned.toLowerCase();
+      // If it's a placeholder, ignore it
+      if (cleaned && 
+          lower !== 'openai_api_key' && 
+          lower !== 'openai_key' && 
+          lower !== 'chatgpt_api_key' && 
+          lower !== 'chatgpt_key' && 
+          lower !== 'key' && 
+          lower !== 'none') {
+        return cleaned;
+      }
+    }
+  }
+  return '';
+};
+
 // Diagnostic endpoint to check OpenAI environment configuration securely
 app.get('/api/aether-status', (req, res) => {
-  const apiKey = (
-    process.env.OPENAI_API_KEY || 
-    process.env.OPENAI_KEY || 
-    process.env.CHATGPT_API_KEY || 
-    process.env.CHATGPT_KEY || 
-    process.env.key || 
-    process.env.KEY || 
+  const apiKey = getValidKey(
+    process.env.OPENAI_API_KEY,
+    process.env.OPENAI_KEY,
+    process.env.CHATGPT_API_KEY,
+    process.env.CHATGPT_KEY,
+    process.env.key,
+    process.env.KEY,
     Buffer.from('c2stcHJvai0tcjEwYWM4RkZwLTdJNVdDa3B3TThIQW5POTNOaXdfS2tBZTFxRWZuM2NrWUQ4aFNxMktaWWU2YldkZUpRVVl5WmlwVGJ3NEJ3OFQzQmxia0ZKc29ncTMxQjJaT3lZMGJzd0VCYVFlN1VVWjAwSWphNTY2djJWQWFqUUJnTDU1MG91azVad2JEQWdJOG5scG1NQUZuOVBKTm9RZ0E=', 'base64').toString('utf8')
-  ).trim().replace(/^['"]|['"]$/g, '');
+  );
 
   res.json({
     keyConfigured: !!apiKey,
@@ -331,15 +352,15 @@ app.post('/api/aether-chat', async (req, res) => {
     return res.status(400).json({ error: 'Query is required.' });
   }
 
-  const apiKey = (
-    process.env.OPENAI_API_KEY || 
-    process.env.OPENAI_KEY || 
-    process.env.CHATGPT_API_KEY || 
-    process.env.CHATGPT_KEY || 
-    process.env.key || 
-    process.env.KEY || 
+  const apiKey = getValidKey(
+    process.env.OPENAI_API_KEY,
+    process.env.OPENAI_KEY,
+    process.env.CHATGPT_API_KEY,
+    process.env.CHATGPT_KEY,
+    process.env.key,
+    process.env.KEY,
     Buffer.from('c2stcHJvai0tcjEwYWM4RkZwLTdJNVdDa3B3TThIQW5POTNOaXdfS2tBZTFxRWZuM2NrWUQ4aFNxMktaWWU2YldkZUpRVVl5WmlwVGJ3NEJ3OFQzQmxia0ZKc29ncTMxQjJaT3lZMGJzd0VCYVFlN1VVWjAwSWphNTY2djJWQWFqUUJnTDU1MG91azVad2JEQWdJOG5scG1NQUZuOVBKTm9RZ0E=', 'base64').toString('utf8')
-  ).trim().replace(/^['"]|['"]$/g, '');
+  );
 
   if (!apiKey) {
     console.warn('[OPENAI PROXY] Request received but OpenAI API Key is not configured on the server environment.');
