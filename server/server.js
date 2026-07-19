@@ -303,6 +303,25 @@ app.post('/api/toggle-emails', (req, res) => {
   res.json({ success: true, emailAlertsEnabled });
 });
 
+// Diagnostic endpoint to check OpenAI environment configuration securely
+app.get('/api/aether-status', (req, res) => {
+  const apiKey = (
+    process.env.OPENAI_API_KEY || 
+    process.env.OPENAI_KEY || 
+    process.env.CHATGPT_API_KEY || 
+    process.env.CHATGPT_KEY || 
+    ''
+  ).trim().replace(/^['"]|['"]$/g, '');
+
+  res.json({
+    keyConfigured: !!apiKey,
+    keyLength: apiKey.length,
+    keyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : 'none',
+    nodeVersion: process.version,
+    envKeysPresent: Object.keys(process.env).filter(k => k.toLowerCase().includes('key') || k.toLowerCase().includes('secret'))
+  });
+});
+
 // Secure proxy endpoint to communicate with OpenAI ChatGPT API
 app.post('/api/aether-chat', async (req, res) => {
   const { query } = req.body;

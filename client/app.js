@@ -9,8 +9,7 @@ const PROD_SERVER_URL = 'https://aptronixchat.onrender.com';
 
 const SOCKET_URL = (
   window.location.hostname === 'localhost' || 
-  window.location.hostname === '127.0.0.1' || 
-  window.location.protocol === 'file:'
+  window.location.hostname === '127.0.0.1'
 )
   ? DEV_SERVER_URL
   : (PROD_SERVER_URL || window.location.origin);
