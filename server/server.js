@@ -387,7 +387,7 @@ app.post('/api/aether-chat', async (req, res) => {
           {
             role: 'user',
             parts: [
-              { text: `You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.\n\nUser Question: ${query}` }
+              { text: `You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer clearly: 'I am AetherAI, powered by Google Gemini 3.5 Flash.' Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).\n\nUser Question: ${query}` }
             ]
           }
         ],
@@ -449,7 +449,7 @@ app.post('/api/aether-chat', async (req, res) => {
     const postData = JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.' },
+        { role: 'system', content: 'You are AetherAI, a highly intelligent neural assistant agent built on Google Gemini 3.5 Flash. If anyone asks which AI, model, or version you are, always answer: I am AetherAI, powered by Google Gemini 3.5 Flash. Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks).' },
         { role: 'user', content: query }
       ],
       temperature: 0.7
