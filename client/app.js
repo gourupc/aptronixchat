@@ -2897,4 +2897,184 @@ if (joinCodeRoomBtn) {
   });
 }
 
+// --- 4. Admin Portal Functionality ---
+function openAdminPortal() {
+  const adminPortalModal = document.getElementById('admin-portal-modal');
+  const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
+  const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
+  const adminNewPasscode = document.getElementById('admin-new-passcode');
+  const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
+  const adminSettingsForm = document.getElementById('admin-settings-form');
+  const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
+  const adminOtpInput = document.getElementById('admin-otp-input');
+  const adminPortalMessage = document.getElementById('admin-portal-message');
+
+  if (!adminPortalModal) return;
+
+  // Clear messages & fields
+  adminPortalMessage.className = 'admin-portal-message';
+  adminPortalMessage.textContent = '';
+  if (adminNewPasscode) adminNewPasscode.value = '';
+  if (adminOtpInput) adminOtpInput.value = '';
+  if (adminOtpVerificationPanel) adminOtpVerificationPanel.classList.add('hidden');
+  if (adminSettingsForm) adminSettingsForm.classList.remove('hidden');
+
+  // Open modal
+  adminPortalModal.classList.remove('hidden');
+
+  // Fetch current config
+  fetch(`${SOCKET_URL}/api/admin/config`)
+    .then(res => res.json())
+    .then(data => {
+      if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = data.currentPasscode;
+      if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = data.passcodeRequiredOtp ? 'Enabled (Email OTP)' : 'Disabled';
+      if (adminRequireOtpCheckbox) adminRequireOtpCheckbox.checked = data.passcodeRequiredOtp;
+    })
+    .catch(err => {
+      console.error('Failed to load admin config:', err);
+      if (adminPortalMessage) {
+        adminPortalMessage.className = 'admin-portal-message error';
+        adminPortalMessage.textContent = 'Failed to load configuration from server.';
+      }
+    });
+}
+
+// Bind admin close and submission buttons
+document.addEventListener('DOMContentLoaded', () => {
+  const adminPortalModal = document.getElementById('admin-portal-modal');
+  const adminCloseBtn = document.getElementById('admin-close-btn');
+  const adminSaveBtn = document.getElementById('admin-save-btn');
+  const adminVerifyBtn = document.getElementById('admin-verify-btn');
+  const searchInput = document.getElementById('search-input');
+
+  // Trigger Admin via search SHUBHAM + Enter
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = searchInput.value.trim().toUpperCase();
+        if (val === 'SHUBHAM') {
+          e.preventDefault();
+          searchInput.value = '';
+          openAdminPortal();
+        }
+      }
+    });
+  }
+
+  if (adminCloseBtn && adminPortalModal) {
+    adminCloseBtn.addEventListener('click', () => {
+      adminPortalModal.classList.add('hidden');
+    });
+  }
+
+  if (adminSaveBtn) {
+    adminSaveBtn.addEventListener('click', () => {
+      const adminNewPasscode = document.getElementById('admin-new-passcode');
+      const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
+      const adminPortalMessage = document.getElementById('admin-portal-message');
+      const adminSettingsForm = document.getElementById('admin-settings-form');
+      const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
+
+      if (!adminNewPasscode || !adminNewPasscode.value.trim()) {
+        adminPortalMessage.className = 'admin-portal-message error';
+        adminPortalMessage.textContent = 'Please enter a valid passcode.';
+        return;
+      }
+
+      adminPortalMessage.className = 'admin-portal-message';
+      adminPortalMessage.textContent = 'Processing request...';
+
+      fetch(`${SOCKET_URL}/api/admin/request-change`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newPasscode: adminNewPasscode.value.trim(),
+          requireOtp: adminRequireOtpCheckbox ? adminRequireOtpCheckbox.checked : false
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          adminPortalMessage.className = 'admin-portal-message error';
+          adminPortalMessage.textContent = data.error;
+          return;
+        }
+
+        if (data.otpRequired) {
+          adminPortalMessage.className = 'admin-portal-message success';
+          adminPortalMessage.textContent = data.message;
+          if (adminSettingsForm) adminSettingsForm.classList.add('hidden');
+          if (adminOtpVerificationPanel) adminOtpVerificationPanel.classList.remove('hidden');
+        } else {
+          adminPortalMessage.className = 'admin-portal-message success';
+          adminPortalMessage.textContent = data.message;
+          
+          // Refresh configuration displays
+          const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
+          const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
+          if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = adminNewPasscode.value.trim();
+          if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = (adminRequireOtpCheckbox && adminRequireOtpCheckbox.checked) ? 'Enabled (Email OTP)' : 'Disabled';
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        adminPortalMessage.className = 'admin-portal-message error';
+        adminPortalMessage.textContent = 'Request failed. Please try again.';
+      });
+    });
+  }
+
+  if (adminVerifyBtn) {
+    adminVerifyBtn.addEventListener('click', () => {
+      const adminOtpInput = document.getElementById('admin-otp-input');
+      const adminPortalMessage = document.getElementById('admin-portal-message');
+      const adminSettingsForm = document.getElementById('admin-settings-form');
+      const adminOtpVerificationPanel = document.getElementById('admin-otp-verification-panel');
+      const adminNewPasscode = document.getElementById('admin-new-passcode');
+      const adminRequireOtpCheckbox = document.getElementById('admin-require-otp-checkbox');
+
+      if (!adminOtpInput || !adminOtpInput.value.trim()) {
+        adminPortalMessage.className = 'admin-portal-message error';
+        adminPortalMessage.textContent = 'Please enter the 6-digit OTP code.';
+        return;
+      }
+
+      adminPortalMessage.className = 'admin-portal-message';
+      adminPortalMessage.textContent = 'Verifying OTP...';
+
+      fetch(`${SOCKET_URL}/api/admin/verify-change`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp: adminOtpInput.value.trim() })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          adminPortalMessage.className = 'admin-portal-message error';
+          adminPortalMessage.textContent = data.error;
+          return;
+        }
+
+        adminPortalMessage.className = 'admin-portal-message success';
+        adminPortalMessage.textContent = data.message;
+
+        // Reset display
+        if (adminSettingsForm) adminSettingsForm.classList.remove('hidden');
+        if (adminOtpVerificationPanel) adminOtpVerificationPanel.classList.add('hidden');
+
+        // Refresh configuration displays
+        const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
+        const adminOtpStatusTxt = document.getElementById('admin-otp-status-txt');
+        if (adminCurrentPasscodeTxt) adminCurrentPasscodeTxt.textContent = adminNewPasscode.value.trim();
+        if (adminOtpStatusTxt) adminOtpStatusTxt.textContent = (adminRequireOtpCheckbox && adminRequireOtpCheckbox.checked) ? 'Enabled (Email OTP)' : 'Disabled';
+      })
+      .catch(err => {
+        console.error(err);
+        adminPortalMessage.className = 'admin-portal-message error';
+        adminPortalMessage.textContent = 'OTP verification failed. Please try again.';
+      });
+    });
+  }
+});
+
 

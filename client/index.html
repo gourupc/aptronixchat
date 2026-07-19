@@ -501,7 +501,61 @@
   <!-- Soft audio notifications for chat (preload disabled to boost initial page speed) -->
   <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav" preload="none"></audio>
 
+  <!-- 3. ADMIN PORTAL MODAL -->
+  <div id="admin-portal-modal" class="admin-portal-modal hidden">
+    <div class="admin-card">
+      <button type="button" id="admin-close-btn" class="admin-close-btn">&times;</button>
+      
+      <div class="admin-header-title">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" style="color: var(--accent-color);">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.47 10 10 10 10-4.47 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+        </svg>
+        <h2>AetherAI Admin Panel</h2>
+      </div>
+
+      <div class="admin-section">
+        <label class="admin-sec-label">Current Configuration</label>
+        <div class="admin-status-box">
+          <div>🔑 Current Passcode: <strong id="admin-current-passcode-txt">Loading...</strong></div>
+          <div>✉️ OTP Protection: <strong id="admin-otp-status-txt">Loading...</strong></div>
+        </div>
+      </div>
+
+      <!-- Settings Form -->
+      <div id="admin-settings-form">
+        <div class="admin-field">
+          <label for="admin-new-passcode" class="admin-field-label">New Messenger Passcode</label>
+          <input type="text" id="admin-new-passcode" placeholder="Enter new passcode..." autocomplete="off">
+        </div>
+
+        <div class="admin-toggle-field">
+          <label class="admin-checkbox-label">
+            <input type="checkbox" id="admin-require-otp-checkbox">
+            Require Email OTP for passcode changes
+          </label>
+        </div>
+
+        <button type="button" id="admin-save-btn" class="btn-primary" style="margin-top: 10px;">
+          Save Settings
+        </button>
+      </div>
+
+      <!-- OTP Verification Panel (Hidden by default) -->
+      <div id="admin-otp-verification-panel" class="hidden">
+        <div class="admin-field">
+          <p class="admin-otp-msg">A security OTP was sent to the admin email. Please enter it below to confirm changes:</p>
+          <input type="text" id="admin-otp-input" placeholder="Enter 6-digit OTP..." autocomplete="off" maxlength="6">
+        </div>
+        <button type="button" id="admin-verify-btn" class="btn-primary" style="margin-top: 10px;">
+          Confirm OTP & Update
+        </button>
+      </div>
+
+      <div id="admin-portal-message" class="admin-portal-message"></div>
+    </div>
+  </div>
+
   <!-- Main Script - Deferred to run after HTML parsing completes (Socket.IO client library will load dynamically on start) -->
-  <script src="app.js?v=4" defer></script>
+  <script src="app.js?v=5" defer></script>
 </body>
 </html>
