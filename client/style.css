@@ -666,11 +666,93 @@ body, html {
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-behavior: smooth;
+  /* Custom thin scrollbar for this container */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(127, 145, 164, 0.35) transparent;
 }
+
+.messages-container::-webkit-scrollbar {
+  width: 5px;
+}
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(127, 145, 164, 0.35);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(127, 145, 164, 0.65);
+}
+
+/* Scroll to Bottom Button – like WhatsApp / Telegram */
+.scroll-to-bottom-btn {
+  position: absolute;
+  bottom: 82px;
+  right: 18px;
+  z-index: 50;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--secondary-bg, #1e2a38);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  color: var(--text-primary, #e0e6ed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.18s ease,
+              background 0.15s ease;
+  opacity: 1;
+}
+.scroll-to-bottom-btn:hover {
+  background: var(--accent-color, #4a9eff);
+  color: #fff;
+  transform: scale(1.1) translateY(-2px);
+}
+.scroll-to-bottom-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8) translateY(8px);
+}
+.scroll-to-bottom-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Unread count badge on scroll button */
+.scroll-unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--accent-color, #4a9eff);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--primary-bg, #131c26);
+  line-height: 1;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.scroll-unread-badge.hidden {
+  display: none;
+}
+
 
 .welcome-box {
   margin: 1rem auto;

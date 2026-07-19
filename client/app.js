@@ -901,7 +901,7 @@ function initializeSocket() {
     if (welcomeBox) welcomeBox.remove();
 
     renderMessage(message);
-    scrollToBottom();
+    smartScrollToBottom();
 
     // Mark as read immediately if actively viewing DM
     if (!message.system && message.username !== currentUsername) {
@@ -1486,8 +1486,63 @@ logoutBtn.addEventListener('click', () => {
 });
 
 // --- Utility Functions ---
+// --- Professional Scroll Management (WhatsApp / Telegram style) ---
+const scrollBtn = document.getElementById('scroll-to-bottom-btn');
+const scrollBadge = document.getElementById('scroll-unread-badge');
+let unreadScrollCount = 0;
+let isUserScrolledUp = false;
+
+// Threshold in px — if user is within this from bottom, consider them "at bottom"
+const SCROLL_THRESHOLD = 80;
+
+function isAtBottom() {
+  if (!messagesContainer) return true;
+  return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < SCROLL_THRESHOLD;
+}
+
+function updateScrollBtn() {
+  if (!scrollBtn) return;
+  if (isAtBottom()) {
+    scrollBtn.classList.add('hidden');
+    isUserScrolledUp = false;
+    unreadScrollCount = 0;
+    if (scrollBadge) { scrollBadge.classList.add('hidden'); scrollBadge.textContent = '0'; }
+  } else {
+    scrollBtn.classList.remove('hidden');
+    isUserScrolledUp = true;
+  }
+}
+
 function scrollToBottom() {
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  if (!messagesContainer) return;
+  messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+  unreadScrollCount = 0;
+  if (scrollBadge) { scrollBadge.classList.add('hidden'); scrollBadge.textContent = '0'; }
+}
+
+// Smart scroll — only auto-scroll if user is at bottom (don't hijack if reading history)
+function smartScrollToBottom() {
+  if (isAtBottom()) {
+    messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+  } else {
+    // User is reading old messages — just increment badge
+    unreadScrollCount++;
+    if (scrollBadge) {
+      scrollBadge.textContent = unreadScrollCount > 99 ? '99+' : unreadScrollCount;
+      scrollBadge.classList.remove('hidden');
+    }
+    scrollBtn && scrollBtn.classList.remove('hidden');
+  }
+}
+
+// Listen to scroll events on the messages container
+if (messagesContainer) {
+  messagesContainer.addEventListener('scroll', updateScrollBtn, { passive: true });
+}
+
+// Click the button → scroll to bottom
+if (scrollBtn) {
+  scrollBtn.addEventListener('click', scrollToBottom);
 }
 
 function playNotificationSound() {
