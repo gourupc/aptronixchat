@@ -505,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-  const parseMarkdown = (text) => {
+  function parseMarkdown(text) {
     // Convert code blocks
     let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
     // Convert inline code
