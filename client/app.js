@@ -275,8 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Init theme from localStorage
-  const savedTheme = localStorage.getItem('agent-theme') || 'light';
-  updateThemeUI(savedTheme === 'dark');
+  const savedAgentTheme = localStorage.getItem('agent-theme') || 'light';
+  updateThemeUI(savedAgentTheme === 'dark');
 
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
