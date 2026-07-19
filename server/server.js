@@ -467,7 +467,9 @@ app.post('/api/aether-chat', async (req, res) => {
     });
 
     // Close stream when client disconnects
-    req.on('close', () => streamReq.destroy());
+    res.on('close', () => {
+      if (!streamReq.destroyed) streamReq.destroy();
+    });
 
     streamReq.write(postData);
     streamReq.end();
