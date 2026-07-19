@@ -563,6 +563,79 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Console Voice Speech-to-Text Input (SpeechRecognition) ---
+  const consoleMicBtn = document.querySelector('.btn-mic');
+  let isConsoleListening = false;
+  let consoleRecognition = null;
+
+  if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    consoleRecognition = new SpeechRecognition();
+    consoleRecognition.continuous = false;
+    consoleRecognition.lang = 'en-US';
+    consoleRecognition.interimResults = false;
+
+    consoleRecognition.onstart = () => {
+      isConsoleListening = true;
+      if (consoleMicBtn) {
+        consoleMicBtn.style.color = '#ff4a4a'; // Glow red
+        consoleMicBtn.style.transform = 'scale(1.1)';
+        consoleMicBtn.title = 'Listening... Click to stop';
+      }
+      if (aiSearchInput) {
+        aiSearchInput.value = '';
+        aiSearchInput.placeholder = 'Listening... Speak now.';
+      }
+    };
+
+    consoleRecognition.onresult = (event) => {
+      const speechToText = event.results[0][0].transcript;
+      if (aiSearchInput) {
+        aiSearchInput.value = speechToText;
+      }
+    };
+
+    consoleRecognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      stopConsoleListening();
+    };
+
+    consoleRecognition.onend = () => {
+      stopConsoleListening();
+      if (aiSearchInput && aiSearchInput.value.trim().length > 0) {
+        handleAISearch();
+      }
+    };
+  }
+
+  function stopConsoleListening() {
+    isConsoleListening = false;
+    if (consoleMicBtn) {
+      consoleMicBtn.style.color = '';
+      consoleMicBtn.style.transform = '';
+      consoleMicBtn.title = 'Voice Input';
+    }
+    if (aiSearchInput) {
+      aiSearchInput.placeholder = 'How can I help you today?';
+    }
+    try { if (consoleRecognition) consoleRecognition.stop(); } catch(e){}
+  }
+
+  if (consoleMicBtn) {
+    consoleMicBtn.addEventListener('click', () => {
+      if (!consoleRecognition) {
+        alert('Voice speech-to-text is not supported in this browser. Please use Chrome, Edge, or Safari.');
+        return;
+      }
+      if (isConsoleListening) {
+        stopConsoleListening();
+      } else {
+        if (aiSearchInput) aiSearchInput.value = '';
+        try { consoleRecognition.start(); } catch(e){}
+      }
+    });
+  }
+
   // Dynamic Viewport height recalculation to support mobile layout adjustments
   const calculateVH = () => {
     let vh = window.innerHeight * 0.01;
