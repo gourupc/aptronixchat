@@ -400,14 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ query: query })
       });
       const chatData = await response.json();
-      if (chatData.success && chatData.provider === 'openai') {
+      if (chatData.success && (chatData.provider === 'openai' || chatData.provider === 'gemini')) {
         answerText = chatData.reply;
-        sourceTitle = "OpenAI GPT-4o Engine";
-        sourceUrl = "https://openai.com";
+        sourceTitle = chatData.provider === 'gemini' ? "Google Gemini Engine" : "OpenAI GPT-4o Engine";
+        sourceUrl = chatData.provider === 'gemini' ? "https://aistudio.google.com" : "https://openai.com";
         foundPrebaked = true;
       } else if (chatData.error) {
-        answerText = `⚠️ OpenAI API Error: ${chatData.error}\n\nPlease check your OpenAI key validity, usage limits, or Billing account balance.`;
-        sourceTitle = "OpenAI Error Telemetry";
+        answerText = `⚠️ AI API Error: ${chatData.error}\n\nPlease check your API key validity, usage limits, or Billing account balance.`;
+        sourceTitle = "AI Error Telemetry";
         sourceUrl = "https://platform.openai.com";
         foundPrebaked = true;
       }

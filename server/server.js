@@ -371,6 +371,72 @@ app.post('/api/aether-chat', async (req, res) => {
     });
   }
 
+  const isGemini = apiKey.startsWith('AIzaSy');
+  if (isGemini) {
+    try {
+      const postData = JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: `You are AetherAI, a highly intelligent neural assistant agent. Provide professional, structured, helpful answers. Use markdown formatting where appropriate.\n\nUser Question: ${query}` }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7
+        }
+      });
+
+      const options = {
+        hostname: 'generativelanguage.googleapis.com',
+        port: 443,
+        path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const apiReq = https.request(options, (apiRes) => {
+        let responseBody = '';
+        apiRes.on('data', (chunk) => {
+          responseBody += chunk;
+        });
+        apiRes.on('end', () => {
+          try {
+            const parsed = JSON.parse(responseBody);
+            const reply = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (apiRes.statusCode === 200 && reply) {
+              res.json({ success: true, provider: 'gemini', reply });
+            } else {
+              console.error('[GEMINI API ERROR]', parsed);
+              res.status(apiRes.statusCode || 500).json({ 
+                error: parsed.error?.message || 'Gemini API returned an error.' 
+              });
+            }
+          } catch (e) {
+            console.error('[GEMINI PARSE ERROR]', e);
+            res.status(500).json({ error: 'Failed to parse Gemini response.', details: e.message });
+          }
+        });
+      });
+
+      apiReq.on('error', (err) => {
+        console.error('[GEMINI NETWORK ERROR]', err);
+        res.status(500).json({ error: 'Network failure communicating with Gemini.', details: err.message });
+      });
+
+      apiReq.write(postData);
+      apiReq.end();
+    } catch (err) {
+      console.error('[GEMINI ROUTE ERROR]', err);
+      res.status(500).json({ error: 'Failed to communicate with Gemini model.', details: err.message });
+    }
+    return;
+  }
+
   try {
     const postData = JSON.stringify({
       model: 'gpt-4o-mini',
