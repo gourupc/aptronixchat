@@ -157,6 +157,8 @@ let localStream = null;
 let remoteStream = null;
 let iceCandidatesQueue = [];
 let activeCallTargetSocketId = null; 
+let isSettingRemoteDescription = false;
+let iceDisconnectTimeout = null;
 
 let callType = null; 
 let callTimer = null;
@@ -170,15 +172,30 @@ let publicRoomsCache = [];
 
 
 
-// STUN Configuration
+// STUN & TURN Relay Configuration (Full NAT Traversal for Mobile CGNAT, Wi-Fi & Firewalls)
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun.services.mozilla.com' }
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.nextcloud.com:443' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
   ],
-  iceCandidatePoolSize: 10
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
 };
 
 
@@ -965,7 +982,10 @@ function initializeSocket() {
 
     if (peerConnection) {
       try {
+        isSettingRemoteDescription = true;
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        isSettingRemoteDescription = false;
+
         if (!callTimer) {
           startCallTimer();
         }
@@ -973,27 +993,28 @@ function initializeSocket() {
           remoteVideo.play().catch(e => console.warn('Play resume on remote answer failed:', e.message));
         }
         // Process queued ice candidates
-        processQueuedIceCandidates();
+        await processQueuedIceCandidates();
       } catch (err) {
+        isSettingRemoteDescription = false;
         console.error('Error setting remote description:', err);
       }
-
     }
   });
 
   socket.on('ice-candidate', async ({ candidate }) => {
     if (!candidate) return;
-    if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+    if (
+      peerConnection && 
+      peerConnection.remoteDescription && 
+      peerConnection.remoteDescription.type && 
+      !isSettingRemoteDescription
+    ) {
       try {
         logDiagnostic("Adding ICE candidate...");
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (err) {
-        console.warn('Error adding wrapper candidate, trying raw:', err);
-        try {
-          await peerConnection.addIceCandidate(candidate);
-        } catch (err2) {
-          console.error('Error adding raw ICE candidate:', err2);
-        }
+        console.warn('Error adding candidate, queueing:', err);
+        iceCandidatesQueue.push(candidate);
       }
     } else {
       logDiagnostic(`Queued candidate (${iceCandidatesQueue.length + 1})`);
@@ -1762,6 +1783,38 @@ function formatBytes(bytes, decimals = 1) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+async function getMediaStreamWithFallback(type) {
+  const isVideo = type === 'video';
+  const primaryConstraints = isVideo
+    ? {
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, facingMode: 'user' }
+      }
+    : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
+
+  try {
+    return await navigator.mediaDevices.getUserMedia(primaryConstraints);
+  } catch (err1) {
+    console.warn('Primary WebRTC media constraints failed, trying basic getUserMedia:', err1);
+    if (isVideo) {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      } catch (err2) {
+        console.warn('Basic video stream failed, falling back to audio-only stream:', err2);
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          alert('Camera unavailable or locked by another app. Call connected in Audio-only mode.');
+          callType = 'audio';
+          return audioStream;
+        } catch (err3) {
+          throw err3;
+        }
+      }
+    }
+    throw err1;
+  }
+}
+
 // --- WebRTC Peer-to-Peer Calling Logic ---
 async function initiateUserCall(toSocketId, peerName, type) {
   if (peerConnection || localStream) {
@@ -1806,12 +1859,7 @@ async function initiateUserCall(toSocketId, peerName, type) {
     // Reset candidates queue for new outgoing session
     iceCandidatesQueue = [];
 
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 1.777777778 } } : false
-    });
-
-
+    localStream = await getMediaStreamWithFallback(type);
 
     if (type === 'video') {
       localVideo.srcObject = localStream;
@@ -1896,10 +1944,7 @@ async function acceptIncomingCall() {
   }
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 1.777777778 } } : false
-    });
+    localStream = await getMediaStreamWithFallback(callType);
 
 
 
@@ -1922,15 +1967,17 @@ async function acceptIncomingCall() {
 
     createPeerConnection();
     logDiagnostic("P2P PC Created (Answering call)...");
+    
+    isSettingRemoteDescription = true;
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
+    isSettingRemoteDescription = false;
 
     // Create SDP Answer
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
 
     // Process queued candidates now that both local and remote descriptions are set
-    processQueuedIceCandidates();
+    await processQueuedIceCandidates();
 
 
     socket.emit('make-answer', {
@@ -2024,17 +2071,41 @@ function createPeerConnection() {
 
 
 
-  // ICE state monitor
+  // ICE state monitor with smart reconnection buffer
   peerConnection.oniceconnectionstatechange = () => {
-    if (peerConnection) {
-      logDiagnostic(`ICE: ${peerConnection.iceConnectionState}`);
-      if (
-        peerConnection.iceConnectionState === 'disconnected' ||
-        peerConnection.iceConnectionState === 'failed' ||
-        peerConnection.iceConnectionState === 'closed'
-      ) {
+    if (!peerConnection) return;
+    const state = peerConnection.iceConnectionState;
+    console.log(`[WebRTC ICE State]: ${state}`);
+    logDiagnostic(`ICE: ${state}`);
+
+    if (state === 'disconnected') {
+      // Don't hang up instantly on temporary Wi-Fi/4G network hiccups! Give 5s buffer.
+      if (activeCallStatus) activeCallStatus.textContent = 'Reconnecting call...';
+      if (iceDisconnectTimeout) clearTimeout(iceDisconnectTimeout);
+      iceDisconnectTimeout = setTimeout(() => {
+        if (peerConnection && peerConnection.iceConnectionState === 'disconnected') {
+          console.warn('ICE connection disconnected for >5 seconds. Cleaning up.');
+          cleanupCallConnection();
+        }
+      }, 5000);
+    } else if (state === 'connected' || state === 'completed') {
+      if (iceDisconnectTimeout) clearTimeout(iceDisconnectTimeout);
+      if (activeCallStatus) {
+        activeCallStatus.textContent = callType === 'video' ? 'Video Call Active' : 'Voice Call Active';
+      }
+    } else if (state === 'failed') {
+      console.warn('ICE connection failed. Triggering WebRTC ICE restart...');
+      if (typeof peerConnection.restartIce === 'function') {
+        try {
+          peerConnection.restartIce();
+        } catch (e) {
+          cleanupCallConnection();
+        }
+      } else {
         cleanupCallConnection();
       }
+    } else if (state === 'closed') {
+      cleanupCallConnection();
     }
   };
 
@@ -2139,6 +2210,12 @@ function cleanupCallConnection() {
 
   // Clear timers
   stopCallTimer();
+  if (iceDisconnectTimeout) {
+    clearTimeout(iceDisconnectTimeout);
+    iceDisconnectTimeout = null;
+  }
+  iceCandidatesQueue = [];
+  isSettingRemoteDescription = false;
 
   // Close media tracks
   if (localStream) {
