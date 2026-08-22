@@ -828,6 +828,9 @@ body, html {
   line-height: 1.4;
   word-wrap: break-word;
   word-break: break-word;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .incoming .bubble {

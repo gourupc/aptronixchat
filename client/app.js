@@ -1631,17 +1631,34 @@ function renderMessage(msg) {
 
   // Desktop context menu and Mobile long press handlers
   let longPressTimer = null;
+  let startTouchX = 0;
+  let startTouchY = 0;
+  
   bubble.addEventListener('touchstart', (e) => {
     if (!e.touches || e.touches.length === 0) return;
     const touch = e.touches[0];
-    const clientX = touch.clientX;
-    const clientY = touch.clientY;
+    startTouchX = touch.clientX;
+    startTouchY = touch.clientY;
     longPressTimer = setTimeout(() => {
-      showContextMenu({ clientX, clientY, preventDefault: () => {} }, msg, isOutgoing);
-    }, 500);
+      showContextMenu({ clientX: startTouchX, clientY: startTouchY, preventDefault: () => {} }, msg, isOutgoing);
+    }, 600); // 600ms is standard for comfortable long-press
   }, { passive: true });
-  bubble.addEventListener('touchend', () => clearTimeout(longPressTimer));
-  bubble.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+  
+  bubble.addEventListener('touchmove', (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - startTouchX);
+    const dy = Math.abs(touch.clientY - startTouchY);
+    // Wobble buffer: Only cancel long-press if movement is > 12px (scrolling / swiping)
+    if (dx > 12 || dy > 12) {
+      clearTimeout(longPressTimer);
+    }
+  });
+  
+  bubble.addEventListener('touchend', () => {
+    clearTimeout(longPressTimer);
+  });
+  
   bubble.addEventListener('contextmenu', (e) => {
     showContextMenu(e, msg, isOutgoing);
   });
