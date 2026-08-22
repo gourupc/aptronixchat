@@ -747,14 +747,33 @@ document.addEventListener('DOMContentLoaded', () => {
     window.visualViewport.addEventListener('resize', () => {
       let vh = window.visualViewport.height * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
-      // Scroll active inputs into view if keyboard opens
-      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
-        setTimeout(() => {
-          document.activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }, 100);
+      
+      // Force scroll reset on viewport shift
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      
+      // If keyboard opened, scroll the messages container to show latest messages
+      if (document.activeElement && document.activeElement.id === 'message-input') {
+        setTimeout(scrollToBottom, 80);
       }
     });
   }
+
+  // Prevent Safari keyboard focus scrolling bug
+  if (messageInput) {
+    messageInput.addEventListener('focus', () => {
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+      }, 50);
+    });
+  }
+
+  window.addEventListener('scroll', () => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+      window.scrollTo(0, 0);
+    }
+  });
 
   // Detect touch device properties for pointer adjustments
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
