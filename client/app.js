@@ -120,6 +120,7 @@ const declineCallBtn = document.getElementById('decline-call-btn');
 const activeCallOverlay = document.getElementById('active-call-overlay');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
+const remoteAudio = document.getElementById('remote-audio');
 const videoStreamsContainer = document.getElementById('video-streams-container');
 const audioCallPlaceholder = document.getElementById('audio-call-placeholder');
 const activeCallAvatar = document.getElementById('active-call-avatar');
@@ -1099,12 +1100,18 @@ function initializeSocket() {
     if (remoteVideo && remoteStream) {
       // Temporarily detach and re-attach remoteStream to force mobile GPU to reload the decoder
       remoteVideo.srcObject = null;
+      if (remoteAudio) remoteAudio.srcObject = null;
       setTimeout(() => {
         if (remoteStream) {
           remoteVideo.srcObject = remoteStream;
           remoteVideo.play().then(() => {
             logDiagnostic("Remote video active");
           }).catch(e => console.warn('Fallback play failed:', e));
+          
+          if (remoteAudio) {
+            remoteAudio.srcObject = remoteStream;
+            remoteAudio.play().catch(e => console.warn('Fallback audio play failed:', e));
+          }
         }
       }, 150);
     }
@@ -2439,22 +2446,43 @@ function createPeerConnection() {
       remoteStream.addTrack(event.track);
     }
     
+    // Mute the remote video feed to prevent double-audio/echo on desktop
+    remoteVideo.muted = true;
+    
     // Force re-assign srcObject to trigger layout/pipeline updates in Chrome/Safari
     remoteVideo.srcObject = remoteStream;
+    if (remoteAudio) {
+      remoteAudio.srcObject = remoteStream;
+    }
     
     // Explicitly play remote video to bypass browser autoplay policies
     remoteVideo.play().catch(e => {
-      console.warn('Autoplay blocked. Adding fallback user gesture listener:', e.message);
+      console.warn('Video Autoplay blocked. Adding fallback user gesture listener:', e.message);
       const playFallback = () => {
-        remoteVideo.play().catch(err => console.error('Fallback playback failed:', err));
+        remoteVideo.play().catch(err => console.error('Fallback video playback failed:', err));
       };
       document.addEventListener('click', playFallback, { once: true });
       document.addEventListener('touchstart', playFallback, { once: true });
     });
 
+    // Explicitly play remote audio to bypass browser autoplay policies (forces audio to bluetooth/speaker on iOS)
+    if (remoteAudio) {
+      remoteAudio.play().catch(e => {
+        console.warn('Audio Autoplay blocked. Adding fallback user gesture listener:', e.message);
+        const playAudioFallback = () => {
+          remoteAudio.play().catch(err => console.error('Fallback audio playback failed:', err));
+        };
+        document.addEventListener('click', playAudioFallback, { once: true });
+        document.addEventListener('touchstart', playAudioFallback, { once: true });
+      });
+    }
+
     // Handle track unmute event
     event.track.onunmute = () => {
-      remoteVideo.play().catch(err => console.warn('Unmute play retry failed:', err.message));
+      remoteVideo.play().catch(err => console.warn('Unmute video play retry failed:', err.message));
+      if (remoteAudio) {
+        remoteAudio.play().catch(err => console.warn('Unmute audio play retry failed:', err.message));
+      }
     };
     
     if (callType === 'audio') {
@@ -2696,6 +2724,9 @@ function cleanupCallConnection() {
   remoteStream = null;
   localVideo.srcObject = null;
   remoteVideo.srcObject = null;
+  if (remoteAudio) {
+    remoteAudio.srcObject = null;
+  }
 
   // Reset Control buttons
   isMicMuted = false;
