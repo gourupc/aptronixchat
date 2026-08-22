@@ -711,6 +711,8 @@ const upload = multer({
 
 // Serve uploads static assets
 app.use('/uploads', express.static(UPLOADS_DIR));
+// Serve client static assets
+app.use(express.static(path.join(__dirname, '../client')));
 
 // POST /upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {

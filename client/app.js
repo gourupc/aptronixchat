@@ -1613,7 +1613,7 @@ function renderMessage(msg) {
   // Add hover quick reaction bar
   const quickReacts = document.createElement('div');
   quickReacts.className = 'quick-reactions';
-  quickReacts.style.cssText = isOutgoing ? 'right:100%;left:auto;' : 'left:100%;';
+  quickReacts.style.cssText = isOutgoing ? 'right: 10px;' : 'left: 10px;';
   ['👍','❤️','😂','🔥','😮','😢'].forEach(em => {
     const btn = document.createElement('button');
     btn.className = 'quick-reaction-btn';
@@ -1632,8 +1632,12 @@ function renderMessage(msg) {
   // Desktop context menu and Mobile long press handlers
   let longPressTimer = null;
   bubble.addEventListener('touchstart', (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
     longPressTimer = setTimeout(() => {
-      showContextMenu({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} }, msg, isOutgoing);
+      showContextMenu({ clientX, clientY, preventDefault: () => {} }, msg, isOutgoing);
     }, 500);
   }, { passive: true });
   bubble.addEventListener('touchend', () => clearTimeout(longPressTimer));
