@@ -2543,8 +2543,25 @@ function createPeerConnection() {
     const state = peerConnection.connectionState;
     console.log(`[WebRTC Connection State]: ${state}`);
     if (state === 'failed') {
-      console.warn('[WebRTC] connectionState failed – cleaning up.');
-      cleanupCallConnection();
+      console.warn('[WebRTC] connectionState failed – attempting ICE restart rather than instant disconnect.');
+      logDiagnostic('Connection failed – restarting...');
+      
+      // Trigger ICE restart instead of instant cleanup to give cellular networks a chance to reconnect
+      (async () => {
+        if (!peerConnection || !activeCallTargetSocketId) { cleanupCallConnection(); return; }
+        try {
+          const offer = await peerConnection.createOffer({ iceRestart: true });
+          await peerConnection.setLocalDescription(offer);
+          socket.emit('call-user', {
+            to: activeCallTargetSocketId,
+            offer: peerConnection.localDescription,
+            type: callType
+          });
+        } catch (e) {
+          console.error('[WebRTC] ICE restart failed on connectionState failed:', e);
+          cleanupCallConnection();
+        }
+      })();
     } else if (state === 'connected') {
       if (activeCallStatus) {
         activeCallStatus.textContent = callType === 'video' ? 'Video Call Active' : 'Voice Call Active';
