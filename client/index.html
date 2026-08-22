@@ -281,6 +281,20 @@
         </div>
       </header>
 
+      <!-- Pinned Message Banner -->
+      <div id="pinned-message-bar" class="pinned-message-bar hidden">
+        <div class="pinned-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+        </div>
+        <div class="pinned-content">
+          <span class="pinned-label">Pinned Message</span>
+          <span id="pinned-message-text" class="pinned-text"></span>
+        </div>
+        <button type="button" id="unpin-btn" class="btn-icon-custom pinned-close" title="Unpin">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
       <!-- Typing Indicator Banner -->
       <div id="typing-indicator-bar" class="typing-indicator-bar hidden">
         <span id="typing-text">someone is typing</span>
@@ -352,6 +366,30 @@
               </svg>
             </button>
           </div>
+        </div>
+
+        <!-- Reply Preview Bar -->
+        <div id="reply-preview-bar" class="reply-preview-bar hidden">
+          <div class="reply-accent-bar"></div>
+          <div class="reply-preview-content">
+            <span class="reply-preview-name" id="reply-preview-name"></span>
+            <span class="reply-preview-text" id="reply-preview-text"></span>
+          </div>
+          <button type="button" id="cancel-reply-btn" class="btn-icon-custom" title="Cancel Reply" style="width:24px;height:24px;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+
+        <!-- Edit Mode Bar -->
+        <div id="edit-mode-bar" class="edit-mode-bar hidden">
+          <div class="edit-accent-bar" style="background:var(--accent-success);"></div>
+          <div class="reply-preview-content">
+            <span class="reply-preview-name" style="color:var(--accent-success);">✏️ Edit Message</span>
+            <span class="reply-preview-text" id="edit-preview-text"></span>
+          </div>
+          <button type="button" id="cancel-edit-btn" class="btn-icon-custom" title="Cancel Edit" style="width:24px;height:24px;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
         </div>
 
         <div class="input-panel">
@@ -550,7 +588,44 @@
     </div>
   </div>
 
+  <!-- Context Menu -->
+  <div id="msg-context-menu" class="msg-context-menu hidden">
+    <button type="button" class="ctx-item" id="ctx-reply"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.8 11 5.1-1-5-4-10-11-11z"/></svg> Reply</button>
+    <button type="button" class="ctx-item ctx-edit hidden" id="ctx-edit"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Edit</button>
+    <button type="button" class="ctx-item" id="ctx-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy</button>
+    <button type="button" class="ctx-item" id="ctx-forward"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.8-11 5.1 1-5 4-10 11-11z"/></svg> Forward</button>
+    <button type="button" class="ctx-item" id="ctx-pin"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg> Pin</button>
+    <button type="button" class="ctx-item ctx-delete hidden" id="ctx-delete" style="color:#ff3b30;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Delete</button>
+  </div>
+
+  <!-- Forward Modal -->
+  <div id="forward-modal" class="modal-overlay hidden">
+    <div class="forward-modal-card">
+      <div class="forward-modal-header">
+        <h3>Forward Message</h3>
+        <button type="button" id="forward-modal-close" class="admin-close-btn" style="position:static;">✕</button>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 12px;">Select a room to forward to:</p>
+      <div id="forward-rooms-list" class="forward-rooms-list"></div>
+    </div>
+  </div>
+
+  <!-- Full Emoji Picker -->
+  <div id="emoji-picker-panel" class="emoji-picker-panel hidden">
+    <div class="emoji-picker-tabs">
+      <button class="emoji-tab active" data-cat="recent" title="Recent">🕐</button>
+      <button class="emoji-tab" data-cat="smileys" title="Smileys">😀</button>
+      <button class="emoji-tab" data-cat="people" title="People">👋</button>
+      <button class="emoji-tab" data-cat="nature" title="Nature">🌿</button>
+      <button class="emoji-tab" data-cat="food" title="Food">🍕</button>
+      <button class="emoji-tab" data-cat="travel" title="Travel">✈️</button>
+      <button class="emoji-tab" data-cat="objects" title="Objects">💡</button>
+      <button class="emoji-tab" data-cat="symbols" title="Symbols">❤️</button>
+    </div>
+    <div id="emoji-grid" class="emoji-grid"></div>
+  </div>
+
   <!-- Main Script - Deferred to run after HTML parsing completes (Socket.IO client library will load dynamically on start) -->
-  <script src="app.js?v=8" defer></script>
+  <script src="app.js?v=9" defer></script>
 </body>
 </html>

@@ -170,6 +170,23 @@ let iceFailedTimeout = null;
 let currentFacingMode = 'user';
 let publicRoomsCache = [];
 
+// Telegram Features State Variables
+let activeReplyMsg = null;
+let activeEditMsgId = null;
+let contextMenuTargetMsg = null;
+let recentEmojis = ['👍','❤️','😂','🔥','🎉','😮','🤔','😢'];
+const EMOJI_CATEGORIES = {
+  recent: [],
+  smileys: ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','😚','☺️','🙂','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','☹️','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','😡','😠','🤬','😷','🤒','🤕','🤢','🤮','🥴','😇','🥳','🥺'],
+  people: ['👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃','🫀','🧠','👤','👥','🫂','💏','💑','👶','🧒','👦','👧','🧑','👱','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷'],
+  nature: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🐆','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐈‍⬛','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿','🦔','🌲','🌳','🌴','🌱','🌿','☘️','🍀','🎋','🎍','🪴','🌾','🌺','🌻','🌹','🥀','🌷','🌼','🌸','🌞','🌝','🌛','🌜','🌚','🌕','🌙','🌈','⛅','🌤','🌥','☁️','🌦','🌧','⛈','🌩','🌨','❄️','⛄','🌬','💨','🌪','🌫','🌊','💧','💦','🔥','🌍','🌎','🌏'],
+  food: ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🫑','🥦','🥬','🥒','🌶','🫒','🧄','🧅','🥔','🍠','🧈','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌮','🌯','🫔','🥙','🧆','🍲','🥣','🥗','🍱','🍘','🍙','🍚','🍛','🍜','🍝','🍞','🥐','🥖','🧀','pizza','🍕','🍔','🍟','🌭','🥪','🥨','🍿','🧂','🥫','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🧁','🥧','🍫','🍬','🍭','🍮','🍯','☕','🫖','🍵','🧋','🥤','🧃','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾'],
+  travel: ['🚀','✈️','🚁','🛸','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍','🛵','🚲','🛴',' skateboard','🛼','🚏','🛣','🛤','🏔','⛰','🌋','🗻','🏕','🏖','🏜','🏝','🏞','🏟','🏛','🏗','🧱','🪨','🛖','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋',' fountain','⛺','🌁','🌃','🏙','🌄','🌅','🌆','🌇','🌉','🎠','🎡','🎢','💈','🎪','🌐','🗺','🧭','🏄','🤿','🏊','🚣','🧗','🏇','⛷','🏂','🪂','🏋','🤼','🤾','🏌','🧘','🛀','🛌','🪁','🏹','🎒','🎿'],
+  objects: ['💡','🔦','🕯','🪔','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📦','📫','📪','📬','📭','📮','🗳','📝','📄','📃','📋','📁','📂','🗂','🗞','📰','📓','📔','📕','📗','📘','📙','📚','📖','🔖','🏷','💉','🩸','💊','🩹','🩺','🔭','🔬','🩻','🌡','🧪','🧫','🧬','🔋','🔌','💻','🖥','🖨','⌨️','鼠标','💽','💾','💿','📀','📱','☎️','📞','📟','📠','📡','📺','📻','🎙','🎚','🎛','⏱','⏰','⌛','⏳','📷','📸','📹','🎥','📽','🎞','🔮','🧲','🧯','🛒','🚪','🪑','🚽','🪠','🚿','🛁','🪒','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽'],
+  symbols: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🔕','🔇','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','🔱','⚜️','🔰','♻️','✅','💠','🌀','💤','⚠️','🔔','🎵','🎶','✔️']
+};
+
+
 
 
 // Dynamic RTC config – fetched from server at call time so TURN credentials are always fresh
@@ -1339,6 +1356,74 @@ function initializeSocket() {
       switchChatRoom('AetherAIFree General');
     }
   });
+
+  // --- Telegram features socket listeners ---
+
+  socket.on('message-edited', ({ room, messageId, newText }) => {
+    if (room !== currentRoom) return;
+    const bubble = document.querySelector(`[data-msg-id="${messageId}"]`);
+    if (!bubble) return;
+    // Find and update message text element
+    const textEl = bubble.querySelector('.msg-text');
+    if (textEl) textEl.textContent = newText;
+    // Add/Update Edited status badge
+    let editedBadge = bubble.querySelector('.edited-badge');
+    if (!editedBadge) {
+      editedBadge = document.createElement('span');
+      editedBadge.className = 'edited-badge';
+      editedBadge.textContent = ' edited';
+      const timeEl = bubble.querySelector('.msg-time');
+      if (timeEl) timeEl.prepend(editedBadge);
+    }
+  });
+
+  socket.on('message-deleted-manual', ({ room, messageId }) => {
+    if (room !== currentRoom) return;
+    const wrapper = document.querySelector(`[data-msg-id="${messageId}"]`)?.closest('.message-wrapper');
+    if (wrapper) {
+      wrapper.style.transition = 'opacity 0.3s, transform 0.3s';
+      wrapper.style.opacity = '0';
+      wrapper.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        wrapper.remove();
+      }, 300);
+    }
+  });
+
+  socket.on('reaction-updated', ({ room, messageId, reactions }) => {
+    if (room !== currentRoom) return;
+    const reactionsRow = document.getElementById(`reactions-${messageId}`);
+    if (!reactionsRow) return;
+    reactionsRow.innerHTML = '';
+    Object.entries(reactions).forEach(([emoji, users]) => {
+      if (users.length === 0) return;
+      const chip = document.createElement('button');
+      chip.className = 'reaction-chip' + (users.includes(currentUsername) ? ' reacted' : '');
+      chip.innerHTML = `${emoji} <span class="reaction-count">${users.length}</span>`;
+      chip.title = users.join(', ');
+      chip.addEventListener('click', () => sendReaction(messageId, emoji));
+      reactionsRow.appendChild(chip);
+    });
+  });
+
+  socket.on('message-pinned', ({ room, message }) => {
+    if (room !== currentRoom) return;
+    if (!message) {
+      pinnedMessageBar.classList.add('hidden');
+    } else {
+      pinnedMessageBar.classList.remove('hidden');
+      pinnedMessageBar.dataset.msgId = message.id;
+      document.getElementById('pinned-message-text').textContent = message.text || '[File]';
+      pinnedMessageBar.onclick = () => {
+        const target = document.querySelector(`[data-msg-id="${message.id}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('highlight-pulse');
+          setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
+        }
+      };
+    }
+  });
 }
 
 // --- Message Rendering Helpers ---
@@ -1351,10 +1436,25 @@ function renderMessage(msg) {
     return;
   }
 
+  // Inject Date Separator if the date changed
+  const msgDate = new Date(msg.timestamp);
+  const msgDateStr = msgDate.toDateString();
+  if (window._lastRenderedDate !== msgDateStr) {
+    window._lastRenderedDate = msgDateStr;
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    let label = msgDateStr === today ? 'Today' : msgDateStr === yesterday ? 'Yesterday' : msgDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const sep = document.createElement('div');
+    sep.className = 'date-separator';
+    sep.innerHTML = `<span class="date-sep-label">${label}</span>`;
+    messagesContainer.appendChild(sep);
+  }
+
   const isOutgoing = msg.username === currentUsername;
   const wrapper = document.createElement('div');
-  wrapper.className = `msg-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
+  wrapper.className = `msg-wrapper ${isOutgoing ? 'outgoing' : 'incoming'} message-wrapper`;
   wrapper.id = `msg-${msg.id}`; // Map element ID for client self-destruction triggers
+  wrapper.dataset.msgId = msg.id;
 
   // Formatting timestamp
   const date = new Date(msg.timestamp);
@@ -1393,7 +1493,6 @@ function renderMessage(msg) {
     const isVoiceMessage = msg.file.name === 'voice-message.webm';
     
     if (isVoiceMessage) {
-      // Render custom voice message player
       bubbleContentHTML = `
         <div class="voice-player">
           <audio src="${msg.file.url}" controls></audio>
@@ -1401,7 +1500,6 @@ function renderMessage(msg) {
       `;
     } else {
       const fileSizeFormatted = formatBytes(msg.file.size);
-      // Replaced warning with visible download links
       bubbleContentHTML = `
         <div class="file-card">
           <div class="file-icon-wrapper">
@@ -1425,16 +1523,124 @@ function renderMessage(msg) {
     bubbleContentHTML = `<div class="msg-text">${escapeHTML(msg.text)}</div>`;
   }
 
-  wrapper.innerHTML = `
-    <div class="bubble">
-      ${!isOutgoing ? `<div class="msg-sender">${msg.username}</div>` : ''}
-      ${bubbleContentHTML}
-      <div class="msg-meta">
-        <span class="msg-time">${timeStr}</span>
-        ${ticksHTML}
+  // Build the message bubble DOM element manually to bind events safely
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.dataset.msgId = msg.id;
+
+  // Forwarded Label
+  if (msg.forwarded) {
+    const fwd = document.createElement('span');
+    fwd.className = 'forwarded-badge';
+    fwd.textContent = `↪ Forwarded from ${escapeHTML(msg.forwardedFrom || 'Unknown')}`;
+    bubble.appendChild(fwd);
+  }
+
+  // Reply Quoted block
+  if (msg.replyTo) {
+    const quote = document.createElement('div');
+    quote.className = 'reply-quote';
+    quote.dataset.targetId = msg.replyTo.id;
+    quote.innerHTML = `
+      <div>
+        <span class="reply-quote-name">${escapeHTML(msg.replyTo.username)}</span>
+        <span class="reply-quote-text">${escapeHTML(msg.replyTo.text || '[File]')}</span>
       </div>
-    </div>
-  `;
+    `;
+    quote.addEventListener('click', () => {
+      const target = document.querySelector(`[data-msg-id="${msg.replyTo.id}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('highlight-pulse');
+        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
+      }
+    });
+    bubble.appendChild(quote);
+  }
+
+  // Add Sender
+  if (!isOutgoing) {
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.textContent = msg.username;
+    bubble.appendChild(sender);
+  }
+
+  // Add Bubble content
+  const contentContainer = document.createElement('div');
+  contentContainer.innerHTML = bubbleContentHTML;
+  bubble.appendChild(contentContainer.firstElementChild || contentContainer);
+
+  // Add Meta (time + ticks + edited status)
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  
+  const timeEl = document.createElement('span');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = timeStr;
+  if (msg.edited) {
+    const editedBadge = document.createElement('span');
+    editedBadge.className = 'edited-badge';
+    editedBadge.textContent = ' edited';
+    timeEl.prepend(editedBadge);
+  }
+  meta.appendChild(timeEl);
+  if (ticksHTML) {
+    const ticksSpan = document.createElement('span');
+    ticksSpan.innerHTML = ticksHTML;
+    meta.appendChild(ticksSpan.firstElementChild || ticksSpan);
+  }
+  bubble.appendChild(meta);
+
+  // Add Reactions row
+  const reactionsRow = document.createElement('div');
+  reactionsRow.className = 'reactions-row';
+  reactionsRow.id = `reactions-${msg.id}`;
+  // Populate reactions if any exist in payload (e.g. from chat-history reload)
+  if (msg.reactions) {
+    Object.entries(msg.reactions).forEach(([emoji, users]) => {
+      if (users.length === 0) return;
+      const chip = document.createElement('button');
+      chip.className = 'reaction-chip' + (users.includes(currentUsername) ? ' reacted' : '');
+      chip.innerHTML = `${emoji} <span class="reaction-count">${users.length}</span>`;
+      chip.title = users.join(', ');
+      chip.addEventListener('click', () => sendReaction(msg.id, emoji));
+      reactionsRow.appendChild(chip);
+    });
+  }
+  bubble.appendChild(reactionsRow);
+
+  // Add hover quick reaction bar
+  const quickReacts = document.createElement('div');
+  quickReacts.className = 'quick-reactions';
+  quickReacts.style.cssText = isOutgoing ? 'right:100%;left:auto;' : 'left:100%;';
+  ['👍','❤️','😂','🔥','😮','😢'].forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-reaction-btn';
+    btn.textContent = em;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sendReaction(msg.id, em);
+    });
+    quickReacts.appendChild(btn);
+  });
+  wrapper.appendChild(quickReacts);
+
+  // Append bubble to wrapper
+  wrapper.appendChild(bubble);
+
+  // Desktop context menu and Mobile long press handlers
+  let longPressTimer = null;
+  bubble.addEventListener('touchstart', (e) => {
+    longPressTimer = setTimeout(() => {
+      showContextMenu({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: () => {} }, msg, isOutgoing);
+    }, 500);
+  }, { passive: true });
+  bubble.addEventListener('touchend', () => clearTimeout(longPressTimer));
+  bubble.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+  bubble.addEventListener('contextmenu', (e) => {
+    showContextMenu(e, msg, isOutgoing);
+  });
 
   messagesContainer.appendChild(wrapper);
 }
@@ -1446,10 +1652,32 @@ messageForm.addEventListener('submit', (e) => {
   if (!text) return;
   
   if (socket) {
-    socket.emit('send-message', {
-      text: text,
-      room: currentRoom
-    });
+    if (activeEditMsgId) {
+      // Send Edit message command to server
+      socket.emit('edit-message', {
+        room: currentRoom,
+        messageId: activeEditMsgId,
+        newText: text
+      });
+      activeEditMsgId = null;
+      editModeBar.classList.add('hidden');
+    } else {
+      // Normal message or reply
+      const msgPayload = {
+        text: text,
+        room: currentRoom
+      };
+      if (activeReplyMsg) {
+        msgPayload.replyTo = {
+          id: activeReplyMsg.id,
+          username: activeReplyMsg.username,
+          text: activeReplyMsg.text
+        };
+        activeReplyMsg = null;
+        replyPreviewBar.classList.add('hidden');
+      }
+      socket.emit('send-message', msgPayload);
+    }
     
     // Stop typing activity state immediately
     socket.emit('typing', { isTyping: false, room: currentRoom });
@@ -1572,19 +1800,71 @@ searchInput.addEventListener('input', (e) => {
   });
 });
 
-// --- Emoji Popover Quick Trigger ---
-emojiBtn.addEventListener('click', () => {
-  const quickEmojis = ['👍', '❤️', '😂', '🔥', '👏', '🎉', '🚀', '😮', '🤔'];
-  const randomEmoji = quickEmojis[Math.floor(Math.random() * quickEmojis.length)];
-  
-  // Insert emoji at cursor position
+// --- Telegram Full Categorized Emoji Picker ---
+let currentEmojiCat = 'recent';
+EMOJI_CATEGORIES.recent = recentEmojis;
+
+function renderEmojiGrid(cat) {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const emojis = EMOJI_CATEGORIES[cat] || [];
+  emojis.forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-item';
+    btn.type = 'button';
+    btn.textContent = em;
+    btn.addEventListener('click', () => {
+      insertEmoji(em);
+      
+      // Track recently used emojis
+      recentEmojis = recentEmojis.filter(e => e !== em);
+      recentEmojis.unshift(em);
+      recentEmojis = recentEmojis.slice(0, 32);
+      EMOJI_CATEGORIES.recent = recentEmojis;
+      
+      // Toggle send/microphone buttons
+      sendBtn.classList.remove('hidden');
+      micRecordBtn.classList.add('hidden');
+    });
+    grid.appendChild(btn);
+  });
+}
+
+function insertEmoji(em) {
   const start = messageInput.selectionStart;
   const end = messageInput.selectionEnd;
   const text = messageInput.value;
-  messageInput.value = text.substring(0, start) + randomEmoji + text.substring(end);
+  messageInput.value = text.substring(0, start) + em + text.substring(end);
   messageInput.focus();
-  messageInput.selectionStart = messageInput.selectionEnd = start + randomEmoji.length;
+  messageInput.selectionStart = messageInput.selectionEnd = start + em.length;
+}
+
+emojiBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  emojiPickerPanel.classList.toggle('hidden');
+  if (!emojiPickerPanel.classList.contains('hidden')) {
+    renderEmojiGrid(currentEmojiCat);
+  }
 });
+
+document.querySelectorAll('.emoji-tab').forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.emoji-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentEmojiCat = tab.getAttribute('data-cat');
+    renderEmojiGrid(currentEmojiCat);
+  });
+});
+
+// Close emoji picker panel if clicked outside
+document.addEventListener('click', (e) => {
+  if (emojiPickerPanel && !emojiPickerPanel.contains(e.target) && e.target !== emojiBtn) {
+    emojiPickerPanel.classList.add('hidden');
+  }
+});
+
 
 // --- File Upload & Sharing Event Handlers ---
 attachBtn.addEventListener('click', () => {
@@ -3076,6 +3356,159 @@ if (joinCodeRoomBtn) {
     switchChatRoom(roomName);
   });
 }
+
+// ============================================================
+// TELEGRAM FEATURES: Context Menu, Reply, Edit, Delete, React
+// ============================================================
+
+const msgContextMenu = document.getElementById('msg-context-menu');
+const replyPreviewBar = document.getElementById('reply-preview-bar');
+const editModeBar = document.getElementById('edit-mode-bar');
+const pinnedMessageBar = document.getElementById('pinned-message-bar');
+const emojiPickerPanel = document.getElementById('emoji-picker-panel');
+const forwardModal = document.getElementById('forward-modal');
+
+function showContextMenu(e, msgData, isOwn) {
+  e.preventDefault();
+  contextMenuTargetMsg = msgData;
+  document.getElementById('ctx-edit').classList.toggle('hidden', !isOwn || !!msgData.file);
+  document.getElementById('ctx-delete').classList.toggle('hidden', !isOwn);
+  msgContextMenu.classList.remove('hidden');
+  const x = Math.min(e.clientX, window.innerWidth - 180);
+  const y = Math.min(e.clientY, window.innerHeight - msgContextMenu.offsetHeight - 10);
+  msgContextMenu.style.left = x + 'px';
+  msgContextMenu.style.top = y + 'px';
+}
+
+document.addEventListener('click', () => msgContextMenu.classList.add('hidden'));
+
+// Reply message trigger
+function startReply(msg) {
+  activeReplyMsg = msg;
+  activeEditMsgId = null;
+  editModeBar.classList.add('hidden');
+  replyPreviewBar.classList.remove('hidden');
+  document.getElementById('reply-preview-name').textContent = msg.username;
+  document.getElementById('reply-preview-text').textContent = msg.text || '[File]';
+  messageInput.focus();
+}
+
+document.getElementById('cancel-reply-btn').addEventListener('click', () => {
+  activeReplyMsg = null;
+  replyPreviewBar.classList.add('hidden');
+});
+
+// Edit message trigger
+function startEdit(msg) {
+  activeEditMsgId = msg.id;
+  activeReplyMsg = null;
+  replyPreviewBar.classList.add('hidden');
+  editModeBar.classList.remove('hidden');
+  document.getElementById('edit-preview-text').textContent = msg.text;
+  messageInput.value = msg.text;
+  messageInput.focus();
+  
+  // Show send button
+  sendBtn.classList.remove('hidden');
+  micRecordBtn.classList.add('hidden');
+}
+
+document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+  activeEditMsgId = null;
+  editModeBar.classList.add('hidden');
+  messageInput.value = '';
+  sendBtn.classList.add('hidden');
+  micRecordBtn.classList.remove('hidden');
+});
+
+// Delete message manual trigger
+function deleteMessageForEveryone(msgId) {
+  if (!confirm('Delete this message for everyone?')) return;
+  socket.emit('delete-message-manual', { room: currentRoom, messageId: msgId });
+}
+
+// React to a message
+function sendReaction(msgId, emoji) {
+  socket.emit('react-message', { room: currentRoom, messageId: msgId, emoji });
+}
+
+// Pin a message
+function pinMessage(msgId) {
+  socket.emit('pin-message', { room: currentRoom, messageId: msgId });
+}
+
+// Forward modal and actions
+let forwardMsgId = null;
+function showForwardModal(msgId) {
+  forwardMsgId = msgId;
+  const list = document.getElementById('forward-rooms-list');
+  list.innerHTML = '';
+  
+  const allRooms = [...roomsList.querySelectorAll('.room-item')].map(li => li.getAttribute('data-room')).filter(Boolean);
+  if (allRooms.length <= 1) {
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:10px;">No other rooms available.</p>';
+  }
+  
+  allRooms.forEach(room => {
+    if (room === currentRoom) return;
+    const btn = document.createElement('button');
+    btn.className = 'forward-room-item';
+    btn.type = 'button';
+    btn.innerHTML = `<div class="forward-room-avatar">${room.substring(0, 2).toUpperCase()}</div><span>${escapeHTML(room)}</span>`;
+    btn.addEventListener('click', () => {
+      socket.emit('forward-message', {
+        fromRoom: currentRoom,
+        toRoom: room,
+        messageId: forwardMsgId
+      });
+      forwardModal.classList.add('hidden');
+      alert(`Message forwarded to "${room}"!`);
+    });
+    list.appendChild(btn);
+  });
+  
+  forwardModal.classList.remove('hidden');
+}
+
+document.getElementById('forward-modal-close').addEventListener('click', () => {
+  forwardModal.classList.add('hidden');
+});
+
+forwardModal.addEventListener('click', (e) => {
+  if (e.target === forwardModal) forwardModal.classList.add('hidden');
+});
+
+// Bind Context Menu Items actions
+document.getElementById('ctx-reply').addEventListener('click', () => {
+  if (contextMenuTargetMsg) startReply(contextMenuTargetMsg);
+});
+document.getElementById('ctx-edit').addEventListener('click', () => {
+  if (contextMenuTargetMsg) startEdit(contextMenuTargetMsg);
+});
+document.getElementById('ctx-copy').addEventListener('click', () => {
+  if (contextMenuTargetMsg?.text) {
+    navigator.clipboard.writeText(contextMenuTargetMsg.text)
+      .then(() => alert('Copied to clipboard!'))
+      .catch(() => {});
+  }
+});
+document.getElementById('ctx-forward').addEventListener('click', () => {
+  if (contextMenuTargetMsg) showForwardModal(contextMenuTargetMsg.id);
+});
+document.getElementById('ctx-pin').addEventListener('click', () => {
+  if (contextMenuTargetMsg) pinMessage(contextMenuTargetMsg.id);
+});
+document.getElementById('ctx-delete').addEventListener('click', () => {
+  if (contextMenuTargetMsg) deleteMessageForEveryone(contextMenuTargetMsg.id);
+});
+
+// Pin Banner close/unpin action
+document.getElementById('unpin-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (pinnedMessageBar.dataset.msgId) {
+    socket.emit('pin-message', { room: currentRoom, messageId: pinnedMessageBar.dataset.msgId });
+  }
+});
 
 // --- 4. Admin Portal Functionality ---
 function openAdminPortal() {

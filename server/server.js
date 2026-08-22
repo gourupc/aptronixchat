@@ -49,6 +49,11 @@ let currentMessengerPasscode = 'golu0805';
 let passcodeRequiredOtp = true;
 let pendingPasscodeChange = null;
 
+// Per-message reactions: messageId -> { emoji: [usernames] }
+const messageReactions = new Map();
+// Per-room pinned messages: room -> messageObject
+const roomPinnedMessages = new Map();
+
 
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
@@ -963,12 +968,16 @@ io.on('connection', (socket) => {
     const history = messageHistory.get(room) || [];
     socket.emit('chat-history', history);
 
+    // Send pinned message if exists for this room
+    const pinned = roomPinnedMessages.get(room);
+    if (pinned) socket.emit('message-pinned', { room, message: pinned });
+
     // Send global users list update
     sendGlobalUsers();
   });
 
   // 2. Message Event (supports text, file attachments, and status ticks)
-  socket.on('send-message', ({ text, room, file }) => {
+  socket.on('send-message', ({ text, room, file, replyTo }) => {
     const user = users.get(socket.id);
     if (!user) return;
 
@@ -977,6 +986,7 @@ io.on('connection', (socket) => {
       username: user.username,
       text: text,
       file: file || null,
+      replyTo: replyTo || null,
       timestamp: new Date().toISOString(),
       system: false,
       room: room,
@@ -1220,7 +1230,110 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  // --- Telegram-like Message Features ---
+
+  socket.on('edit-message', ({ room, messageId, newText }) => {
+    const username = users.get(socket.id)?.username;
+    if (!username || !newText?.trim()) return;
+    const hist = messageHistory.get(room);
+    if (!hist) return;
+    const msg = hist.find(m => m.id === messageId);
+    if (msg && msg.username === username) {
+      msg.text = newText.trim();
+      msg.edited = true;
+      io.to(room).emit('message-edited', { room, messageId, newText: msg.text });
+    }
+  });
+
+  socket.on('delete-message-manual', ({ room, messageId }) => {
+    const username = users.get(socket.id)?.username;
+    if (!username) return;
+    const hist = messageHistory.get(room);
+    if (!hist) return;
+    const idx = hist.findIndex(m => m.id === messageId);
+    if (idx !== -1 && hist[idx].username === username) {
+      if (hist[idx].file && hist[idx].file.url) {
+        try { fs.unlink(path.join(__dirname, '../client', hist[idx].file.url), () => {}); } catch (e) {}
+      }
+      hist.splice(idx, 1);
+      if (room.startsWith('dm:')) {
+        const parts = room.split(':');
+        io.to(`user:${parts[1]}`).to(`user:${parts[2]}`).emit('message-deleted-manual', { room, messageId });
+      } else {
+        io.to(room).emit('message-deleted-manual', { room, messageId });
+      }
+    }
+  });
+
+  socket.on('react-message', ({ room, messageId, emoji }) => {
+    const username = users.get(socket.id)?.username;
+    if (!username || !emoji) return;
+    if (!messageReactions.has(messageId)) messageReactions.set(messageId, {});
+    const reactions = messageReactions.get(messageId);
+    if (!reactions[emoji]) reactions[emoji] = [];
+    const ridx = reactions[emoji].indexOf(username);
+    if (ridx !== -1) {
+      reactions[emoji].splice(ridx, 1);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+    } else {
+      reactions[emoji].push(username);
+    }
+    const reactionData = {};
+    Object.entries(reactions).forEach(([e, us]) => { reactionData[e] = [...us]; });
+    if (room.startsWith('dm:')) {
+      const parts = room.split(':');
+      io.to(`user:${parts[1]}`).to(`user:${parts[2]}`).emit('reaction-updated', { room, messageId, reactions: reactionData });
+    } else {
+      io.to(room).emit('reaction-updated', { room, messageId, reactions: reactionData });
+    }
+  });
+
+  socket.on('pin-message', ({ room, messageId }) => {
+    const current = roomPinnedMessages.get(room);
+    if (current && current.id === messageId) {
+      roomPinnedMessages.delete(room);
+      io.to(room).emit('message-pinned', { room, message: null });
+    } else {
+      const hist = messageHistory.get(room) || [];
+      const msg = hist.find(m => m.id === messageId);
+      if (msg) {
+        roomPinnedMessages.set(room, msg);
+        io.to(room).emit('message-pinned', { room, message: msg });
+      }
+    }
+  });
+
+  socket.on('forward-message', ({ fromRoom, toRoom, messageId }) => {
+    const username = users.get(socket.id)?.username;
+    if (!username) return;
+    const fromHist = messageHistory.get(fromRoom) || [];
+    const original = fromHist.find(m => m.id === messageId);
+    if (!original) return;
+    const fwdMsg = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      username,
+      text: original.text || '',
+      file: original.file || null,
+      timestamp: new Date().toISOString(),
+      system: false,
+      room: toRoom,
+      status: 'sent',
+      forwarded: true,
+      forwardedFrom: original.username
+    };
+    const toHist = messageHistory.get(toRoom) || [];
+    toHist.push(fwdMsg);
+    messageHistory.set(toRoom, toHist);
+    if (toRoom.startsWith('dm:')) {
+      const parts = toRoom.split(':');
+      io.to(`user:${parts[1]}`).to(`user:${parts[2]}`).emit('message', fwdMsg);
+    } else {
+      io.to(toRoom).emit('message', fwdMsg);
+    }
+  });
 });
+
 
 // Helper to compile global users and emit update
 function sendGlobalUsers() {
