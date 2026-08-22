@@ -711,8 +711,16 @@ const upload = multer({
 
 // Serve uploads static assets
 app.use('/uploads', express.static(UPLOADS_DIR));
-// Serve client static assets
-app.use(express.static(path.join(__dirname, '../client')));
+// Serve client static assets with Cache-Control headers to bust CDN caches
+app.use(express.static(path.join(__dirname, '../client'), {
+  setHeaders: (res, filePath) => {
+    if (path.extname(filePath) === '.html') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // POST /upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
