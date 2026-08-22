@@ -258,6 +258,20 @@ function getClientMetadata() {
 
 // --- Initialization & Theme Setup ---
 document.addEventListener('DOMContentLoaded', () => {
+  // --- iOS Safari Double-Tap Zoom Prevention ---
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true')) {
+      return; // Allow native zoom/word selection gestures on text input elements
+    }
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault(); // Prevent double-tap to zoom
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
   // --- Stealth AI Search Portal Gate (AetherAI Mask) ---
   const securityMaskGate = document.getElementById('security-mask-gate');
   const aiSearchInput = document.getElementById('ai-search-input');
