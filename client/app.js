@@ -2212,6 +2212,10 @@ async function initiateUserCall(toSocketId, peerName, type) {
   activeCallTargetSocketId = toSocketId;
   callType = type;
 
+  if (remoteAudio) {
+    remoteAudio.play().catch(() => {});
+  }
+
   // Show active call overlay
   activeCallOverlay.classList.remove('hidden');
   
@@ -2302,6 +2306,10 @@ async function acceptIncomingCall() {
   incomingCallOverlay.classList.add('hidden');
   ringtoneSound.pause();
   ringtoneSound.currentTime = 0;
+
+  if (remoteAudio) {
+    remoteAudio.play().catch(() => {});
+  }
 
   activeCallOverlay.classList.remove('hidden');
   
@@ -2452,6 +2460,8 @@ function createPeerConnection() {
     // Force re-assign srcObject to trigger layout/pipeline updates in Chrome/Safari
     remoteVideo.srcObject = remoteStream;
     if (remoteAudio) {
+      remoteAudio.muted = false;
+      remoteAudio.volume = 1.0;
       remoteAudio.srcObject = remoteStream;
     }
     
