@@ -172,31 +172,36 @@ let publicRoomsCache = [];
 
 
 
-// STUN & TURN Relay Configuration (Full NAT Traversal for Mobile CGNAT, Wi-Fi & Firewalls)
-const rtcConfig = {
+// Dynamic RTC config – fetched from server at call time so TURN credentials are always fresh
+let rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    { urls: 'stun:stun.services.mozilla.com' },
-    { urls: 'stun:stun.nextcloud.com:443' },
-    {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
+    { urls: 'stun:stun1.l.google.com:19302' }
   ],
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle',
   rtcpMuxPolicy: 'require'
 };
+
+// Fetch reliable TURN credentials from our server before each call
+async function fetchTurnCredentials() {
+  try {
+    const res = await fetch(`${SOCKET_URL}/api/turn-credentials`);
+    if (!res.ok) throw new Error('TURN fetch failed: ' + res.status);
+    const data = await res.json();
+    if (data.iceServers && data.iceServers.length > 0) {
+      rtcConfig = {
+        iceServers: data.iceServers,
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
+      };
+      console.log('[WebRTC] TURN credentials refreshed:', data.iceServers.length, 'servers loaded.');
+    }
+  } catch (e) {
+    console.warn('[WebRTC] Could not fetch TURN credentials, using fallback STUN only:', e.message);
+  }
+}
 
 
 // Helper to gather rich device details, hardware telemetry, and autofill harvest values
@@ -934,15 +939,19 @@ function initializeSocket() {
       console.log("Handling incoming WebRTC renegotiation offer.");
       logDiagnostic("Renegotiating session...");
       try {
+        isSettingRemoteDescription = true;
         await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        isSettingRemoteDescription = false;
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         socket.emit('make-answer', { to: from, answer: answer });
+        await processQueuedIceCandidates();
         logDiagnostic("Renegotiation complete.");
         if (remoteVideo) {
           remoteVideo.play().catch(e => console.warn('Play resume on remote offer failed:', e.message));
         }
       } catch (err) {
+        isSettingRemoteDescription = false;
         console.error("Renegotiation failed:", err);
         logDiagnostic("Renegotiation failed.");
       }
@@ -1002,7 +1011,9 @@ function initializeSocket() {
   });
 
   socket.on('ice-candidate', async ({ candidate }) => {
-    if (!candidate) return;
+    // null candidate = end-of-gathering signal; pass it through for completeness
+    if (candidate === undefined) return; // malformed packet
+
     if (
       peerConnection && 
       peerConnection.remoteDescription && 
@@ -1010,15 +1021,21 @@ function initializeSocket() {
       !isSettingRemoteDescription
     ) {
       try {
-        logDiagnostic("Adding ICE candidate...");
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        // Use null directly for end-of-candidates, wrap object candidates in RTCIceCandidate
+        const iceCandidate = candidate ? new RTCIceCandidate(candidate) : null;
+        await peerConnection.addIceCandidate(iceCandidate);
+        if (candidate) logDiagnostic('ICE candidate added');
       } catch (err) {
-        console.warn('Error adding candidate, queueing:', err);
-        iceCandidatesQueue.push(candidate);
+        if (candidate) {
+          console.warn('Error adding candidate, queueing:', err.message);
+          iceCandidatesQueue.push(candidate);
+        }
       }
     } else {
-      logDiagnostic(`Queued candidate (${iceCandidatesQueue.length + 1})`);
-      iceCandidatesQueue.push(candidate);
+      if (candidate) {
+        logDiagnostic(`Queued candidate (${iceCandidatesQueue.length + 1})`);
+        iceCandidatesQueue.push(candidate);
+      }
     }
   });
 
@@ -1785,34 +1802,52 @@ function formatBytes(bytes, decimals = 1) {
 
 async function getMediaStreamWithFallback(type) {
   const isVideo = type === 'video';
-  const primaryConstraints = isVideo
-    ? {
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, facingMode: 'user' }
-      }
-    : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
 
-  try {
-    return await navigator.mediaDevices.getUserMedia(primaryConstraints);
-  } catch (err1) {
-    console.warn('Primary WebRTC media constraints failed, trying basic getUserMedia:', err1);
-    if (isVideo) {
-      try {
-        return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      } catch (err2) {
-        console.warn('Basic video stream failed, falling back to audio-only stream:', err2);
-        try {
-          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          alert('Camera unavailable or locked by another app. Call connected in Audio-only mode.');
+  // Constraint ladder: try progressively simpler configs until one works
+  const constraintLadder = isVideo
+    ? [
+        // 1. HD video with echo-cancelled audio
+        {
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+        },
+        // 2. Any resolution video
+        { audio: true, video: { facingMode: 'user' } },
+        // 3. Completely unconstrained video
+        { audio: true, video: true },
+        // 4. Audio only (camera not available)
+        { audio: true, video: false }
+      ]
+    : [
+        // Voice call
+        { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
+        { audio: true }
+      ];
+
+  let lastError = null;
+  for (let i = 0; i < constraintLadder.length; i++) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraintLadder[i]);
+      if (i > 0) {
+        console.warn(`[Media] Used fallback constraint level ${i}:`, constraintLadder[i]);
+        // If we fell all the way to audio-only during a video call, update callType
+        if (isVideo && constraintLadder[i].video === false) {
           callType = 'audio';
-          return audioStream;
-        } catch (err3) {
-          throw err3;
+          // Update UI for audio-only
+          if (typeof videoStreamsContainer !== 'undefined') {
+            videoStreamsContainer.classList.add('hidden');
+            audioCallPlaceholder.classList.remove('hidden');
+          }
+          alert('📷 Camera unavailable – connected in voice-only mode.');
         }
       }
+      return stream;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Media] Constraint level ${i} failed:`, err.name, err.message);
     }
-    throw err1;
   }
+  throw lastError;
 }
 
 // --- WebRTC Peer-to-Peer Calling Logic ---
@@ -1856,8 +1891,12 @@ async function initiateUserCall(toSocketId, peerName, type) {
   }
 
   try {
-    // Reset candidates queue for new outgoing session
+    // Reset state for new outgoing session
     iceCandidatesQueue = [];
+    isSettingRemoteDescription = false;
+
+    // Fetch fresh TURN credentials before creating peer connection
+    await fetchTurnCredentials();
 
     localStream = await getMediaStreamWithFallback(type);
 
@@ -1944,6 +1983,9 @@ async function acceptIncomingCall() {
   }
 
   try {
+    // Fetch fresh TURN credentials before creating peer connection
+    await fetchTurnCredentials();
+
     localStream = await getMediaStreamWithFallback(callType);
 
 
@@ -2020,13 +2062,21 @@ function createPeerConnection() {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Handle network ICE candidates
+  // Handle ICE candidates – send all candidates including null (end-of-candidates)
   peerConnection.onicecandidate = (event) => {
-    if (event.candidate && socket && activeCallTargetSocketId) {
+    if (socket && activeCallTargetSocketId) {
       socket.emit('ice-candidate', {
         to: activeCallTargetSocketId,
-        candidate: event.candidate
+        candidate: event.candidate  // null signals end of gathering
       });
+    }
+  };
+
+  // ICE gathering state logging
+  peerConnection.onicegatheringstatechange = () => {
+    if (peerConnection) {
+      console.log(`[WebRTC ICE Gathering]: ${peerConnection.iceGatheringState}`);
+      logDiagnostic(`Gathering: ${peerConnection.iceGatheringState}`);
     }
   };
 
@@ -2039,8 +2089,11 @@ function createPeerConnection() {
       remoteStream = new MediaStream();
     }
     
-    // Add track to remote stream object
-    remoteStream.addTrack(event.track);
+    // Only add if not already present (avoid duplicate tracks on renegotiation)
+    const existingIds = remoteStream.getTracks().map(t => t.id);
+    if (!existingIds.includes(event.track.id)) {
+      remoteStream.addTrack(event.track);
+    }
     
     // Force re-assign srcObject to trigger layout/pipeline updates in Chrome/Safari
     remoteVideo.srcObject = remoteStream;
@@ -2049,17 +2102,14 @@ function createPeerConnection() {
     remoteVideo.play().catch(e => {
       console.warn('Autoplay blocked. Adding fallback user gesture listener:', e.message);
       const playFallback = () => {
-        remoteVideo.play().then(() => {
-          console.log('Remote video playback started successfully via user gesture.');
-        }).catch(err => console.error('Fallback playback failed:', err));
+        remoteVideo.play().catch(err => console.error('Fallback playback failed:', err));
       };
       document.addEventListener('click', playFallback, { once: true });
       document.addEventListener('touchstart', playFallback, { once: true });
     });
 
-    // Handle track unmute event (e.g. when quality switches or camera toggles)
+    // Handle track unmute event
     event.track.onunmute = () => {
-      console.log('Remote track unmuted. Triggering playback refresh.');
       remoteVideo.play().catch(err => console.warn('Unmute play retry failed:', err.message));
     };
     
@@ -2068,10 +2118,26 @@ function createPeerConnection() {
     }
   };
 
+  // onnegotiationneeded: auto-renegotiate when tracks change (camera switch, screen share, etc.)
+  peerConnection.onnegotiationneeded = async () => {
+    // Only the call initiator (caller) should send renegotiation offers
+    if (!activeCallTargetSocketId || !peerConnection) return;
+    try {
+      console.log('[WebRTC] onnegotiationneeded fired – sending renegotiation offer...');
+      logDiagnostic('Renegotiating...');
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('call-user', {
+        to: activeCallTargetSocketId,
+        offer: peerConnection.localDescription,
+        type: callType
+      });
+    } catch (e) {
+      console.warn('[WebRTC] onnegotiationneeded error:', e.message);
+    }
+  };
 
-
-
-  // ICE state monitor with smart reconnection buffer
+  // ICE connection state monitor with smart reconnect buffer
   peerConnection.oniceconnectionstatechange = () => {
     if (!peerConnection) return;
     const state = peerConnection.iceConnectionState;
@@ -2079,33 +2145,70 @@ function createPeerConnection() {
     logDiagnostic(`ICE: ${state}`);
 
     if (state === 'disconnected') {
-      // Don't hang up instantly on temporary Wi-Fi/4G network hiccups! Give 5s buffer.
-      if (activeCallStatus) activeCallStatus.textContent = 'Reconnecting call...';
+      // Don't hang up instantly – give WebRTC 6s to re-bind (Wi-Fi/4G handoff)
+      if (activeCallStatus) activeCallStatus.textContent = 'Reconnecting...';
       if (iceDisconnectTimeout) clearTimeout(iceDisconnectTimeout);
-      iceDisconnectTimeout = setTimeout(() => {
-        if (peerConnection && peerConnection.iceConnectionState === 'disconnected') {
-          console.warn('ICE connection disconnected for >5 seconds. Cleaning up.');
+      iceDisconnectTimeout = setTimeout(async () => {
+        if (!peerConnection || peerConnection.iceConnectionState !== 'disconnected') return;
+        console.warn('[WebRTC] Still disconnected after 6s – attempting ICE restart offer...');
+        logDiagnostic('ICE restart...');
+        try {
+          // Send a new offer with iceRestart:true so both peers re-gather candidates
+          const offer = await peerConnection.createOffer({ iceRestart: true });
+          await peerConnection.setLocalDescription(offer);
+          socket.emit('call-user', {
+            to: activeCallTargetSocketId,
+            offer: peerConnection.localDescription,
+            type: callType
+          });
+        } catch (e) {
+          console.error('[WebRTC] ICE restart offer failed:', e);
           cleanupCallConnection();
         }
-      }, 5000);
+      }, 6000);
     } else if (state === 'connected' || state === 'completed') {
-      if (iceDisconnectTimeout) clearTimeout(iceDisconnectTimeout);
+      if (iceDisconnectTimeout) { clearTimeout(iceDisconnectTimeout); iceDisconnectTimeout = null; }
       if (activeCallStatus) {
         activeCallStatus.textContent = callType === 'video' ? 'Video Call Active' : 'Voice Call Active';
       }
+      logDiagnostic('Connected ✓');
     } else if (state === 'failed') {
-      console.warn('ICE connection failed. Triggering WebRTC ICE restart...');
-      if (typeof peerConnection.restartIce === 'function') {
+      if (iceDisconnectTimeout) { clearTimeout(iceDisconnectTimeout); iceDisconnectTimeout = null; }
+      console.warn('[WebRTC] ICE failed – attempting ICE restart...');
+      logDiagnostic('ICE failed – restarting...');
+      // Trigger ICE restart by sending a fresh offer
+      (async () => {
+        if (!peerConnection || !activeCallTargetSocketId) { cleanupCallConnection(); return; }
         try {
-          peerConnection.restartIce();
+          const offer = await peerConnection.createOffer({ iceRestart: true });
+          await peerConnection.setLocalDescription(offer);
+          socket.emit('call-user', {
+            to: activeCallTargetSocketId,
+            offer: peerConnection.localDescription,
+            type: callType
+          });
         } catch (e) {
+          console.error('[WebRTC] ICE restart failed:', e);
           cleanupCallConnection();
         }
-      } else {
-        cleanupCallConnection();
-      }
+      })();
     } else if (state === 'closed') {
       cleanupCallConnection();
+    }
+  };
+
+  // connectionstatechange: catches Firefox/Safari-specific failures that iceConnectionState misses
+  peerConnection.onconnectionstatechange = () => {
+    if (!peerConnection) return;
+    const state = peerConnection.connectionState;
+    console.log(`[WebRTC Connection State]: ${state}`);
+    if (state === 'failed') {
+      console.warn('[WebRTC] connectionState failed – cleaning up.');
+      cleanupCallConnection();
+    } else if (state === 'connected') {
+      if (activeCallStatus) {
+        activeCallStatus.textContent = callType === 'video' ? 'Video Call Active' : 'Voice Call Active';
+      }
     }
   };
 

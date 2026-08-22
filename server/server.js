@@ -326,6 +326,46 @@ async function sendAdminEmail(subject, htmlText) {
   }
 }
 
+// 0. GET TURN Credentials (for reliable cross-network WebRTC)
+app.get('/api/turn-credentials', (req, res) => {
+  // Return multiple TURN server providers as a fallback chain.
+  // These are public / free-tier servers. In production, replace with
+  // your own Coturn server or a paid Metered / Twilio TURN account.
+  const iceServers = [
+    // Google STUN (always try direct P2P first)
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    // Twilio STUN
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    // Open Relay TURN - primary (free public TURN relay)
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    // Metered TURN - secondary (free tier, 0.1GB/month)
+    {
+      urls: [
+        'turn:a.relay.metered.ca:80',
+        'turn:a.relay.metered.ca:80?transport=tcp',
+        'turn:a.relay.metered.ca:443',
+        'turn:a.relay.metered.ca:443?transport=tcp'
+      ],
+      username: 'e8dd65bce7a9a74c4db98a89',
+      credential: 'uMPGbHRNmGSK/Blw'
+    }
+  ];
+
+  res.json({ iceServers });
+});
+
 // 1. GET Admin Config
 app.get('/api/admin/config', (req, res) => {
   res.json({
