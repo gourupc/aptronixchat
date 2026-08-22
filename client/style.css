@@ -1280,7 +1280,8 @@ body, html {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
   z-index: 10;
   background: #17212b;
-  transition: transform 0.3s ease;
+  transform: scaleX(-1);
+  transition: opacity 0.3s ease;
 }
 
 
