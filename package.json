@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Root package.json for static CDN deployment fallback",
   "scripts": {
-    "build": "echo 'No build step required for static client'",
+    "build": "cp -r client/* .",
     "start": "node server/server.js"
   }
 }
