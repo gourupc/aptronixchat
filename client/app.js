@@ -1633,13 +1633,16 @@ function renderMessage(msg) {
   let longPressTimer = null;
   let startTouchX = 0;
   let startTouchY = 0;
+  let longPressTriggered = false;
   
   bubble.addEventListener('touchstart', (e) => {
     if (!e.touches || e.touches.length === 0) return;
     const touch = e.touches[0];
     startTouchX = touch.clientX;
     startTouchY = touch.clientY;
+    longPressTriggered = false;
     longPressTimer = setTimeout(() => {
+      longPressTriggered = true;
       showContextMenu({ clientX: startTouchX, clientY: startTouchY, preventDefault: () => {} }, msg, isOutgoing);
     }, 600); // 600ms is standard for comfortable long-press
   }, { passive: true });
@@ -1655,8 +1658,11 @@ function renderMessage(msg) {
     }
   });
   
-  bubble.addEventListener('touchend', () => {
+  bubble.addEventListener('touchend', (e) => {
     clearTimeout(longPressTimer);
+    if (longPressTriggered) {
+      e.preventDefault(); // Prevents synthetic click from closing the menu immediately
+    }
   });
   
   bubble.addEventListener('contextmenu', (e) => {
@@ -3402,6 +3408,7 @@ function showContextMenu(e, msgData, isOwn) {
 }
 
 document.addEventListener('click', () => msgContextMenu.classList.add('hidden'));
+msgContextMenu.addEventListener('click', (e) => e.stopPropagation());
 
 // Reply message trigger
 function startReply(msg) {
