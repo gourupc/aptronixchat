@@ -2187,7 +2187,11 @@ async function getMediaStreamWithFallback(type) {
       console.warn(`[Media] Constraint level ${i} failed:`, err.name, err.message);
     }
   }
-  throw lastError;
+  
+  // Hardware / Permission access is completely blocked (common in secure in-app WebViews/Incognito with blocked permissions)
+  console.warn('[Media] Hardware access completely blocked. Returning empty stream for receive-only calling.');
+  alert('🎙️ Microphone/Camera access is blocked or unavailable on this device. You will connect in receive-only mode (you can see/hear them, but they cannot see/hear you).');
+  return new MediaStream();
 }
 
 // --- WebRTC Peer-to-Peer Calling Logic ---
