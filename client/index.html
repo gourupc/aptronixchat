@@ -483,6 +483,9 @@
         </div>
         <h1 id="active-call-peer-name" class="ios-caller-name">User</h1>
         <p id="active-call-status" class="ios-call-status">Voice Call Connected</p>
+        <button type="button" id="call-mic-warning-btn" class="ios-mic-warning-btn hidden" title="Microphone permission needed">
+          🎙️ Mic Disabled – Tap to Enable Access
+        </button>
         <div id="call-diagnostic-log" class="ios-diagnostic-log">WebRTC Initializing...</div>
       </div>
 
@@ -679,6 +682,35 @@
       <button class="emoji-tab" data-cat="symbols" title="Symbols">❤️</button>
     </div>
     <div id="emoji-grid" class="emoji-grid"></div>
+  <!-- Microphone Permission Detection & Request Modal -->
+  <div id="mic-permission-modal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="mic-perm-card">
+      <div class="mic-perm-header">
+        <div class="mic-perm-icon-wrapper">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+          </svg>
+        </div>
+        <button type="button" id="close-mic-perm-btn" class="admin-close-btn" style="position: static;">✕</button>
+      </div>
+      <h3>Microphone Access Required</h3>
+      <p id="mic-perm-desc">Microphone access was denied or blocked by your browser. Tap below to detect & allow microphone access for real-time voice call.</p>
+
+      <div class="mic-perm-actions" style="margin-bottom: 12px;">
+        <button type="button" id="grant-mic-perm-btn" class="btn-primary" style="background: var(--accent-color); font-weight: 600; padding: 12px 18px; width: 100%; border-radius: 12px; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🎙️ Grant Microphone Access
+        </button>
+      </div>
+
+      <div id="mic-perm-instructions" class="mic-perm-instructions">
+        💡 <strong>How to unblock in your browser:</strong>
+        <ol>
+          <li>Tap the 🔒 <strong>Lock</strong> icon or <strong>Settings</strong> icon in your browser address bar.</li>
+          <li>Select <strong>Site Settings</strong> or <strong>Permissions</strong>.</li>
+          <li>Set <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+        </ol>
+      </div>
+    </div>
   </div>
 
   <!-- Main Script - Deferred to run after HTML parsing completes -->

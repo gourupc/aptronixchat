@@ -2197,7 +2197,7 @@ async function getMediaStreamWithFallback(type) {
   
   // Hardware / Permission access is completely blocked (common in secure in-app WebViews/Incognito with blocked permissions)
   console.warn('[Media] Hardware access completely blocked. Returning empty stream for receive-only calling.');
-  alert('🎙️ Microphone/Camera access is blocked or unavailable on this device. You will connect in receive-only mode (you can see/hear them, but they cannot see/hear you).');
+  showMicPermissionModal('Microphone/Camera access was denied or blocked on this device. You are connected in receive-only mode. Tap below to detect & allow microphone access.');
   return new MediaStream();
 }
 
@@ -2936,6 +2936,114 @@ document.querySelectorAll('.dial-key').forEach(keyBtn => {
     if (keypadDisplay) keypadDisplay.textContent += key;
   });
 });
+
+// --- Microphone Permission Handling & Re-grant Logic ---
+const micPermissionModal = document.getElementById('mic-permission-modal');
+const grantMicPermBtn = document.getElementById('grant-mic-perm-btn');
+const closeMicPermBtn = document.getElementById('close-mic-perm-btn');
+const callMicWarningBtn = document.getElementById('call-mic-warning-btn');
+const micPermDesc = document.getElementById('mic-perm-desc');
+
+let isMicPermissionBlocked = false;
+
+function showMicPermissionModal(message) {
+  isMicPermissionBlocked = true;
+  if (micPermDesc && message) micPermDesc.textContent = message;
+  if (micPermissionModal) micPermissionModal.classList.remove('hidden');
+  if (callMicWarningBtn) callMicWarningBtn.classList.remove('hidden');
+}
+
+function hideMicPermissionModal() {
+  if (micPermissionModal) micPermissionModal.classList.add('hidden');
+}
+
+async function requestAndEnableMicrophone() {
+  try {
+    console.log('[Media] Requesting microphone permission from browser...');
+    const freshStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+
+    const newAudioTrack = freshStream.getAudioTracks()[0];
+    if (!newAudioTrack) throw new Error('No audio track returned');
+
+    console.log('[Media] Microphone permission granted by user!');
+    isMicPermissionBlocked = false;
+    hideMicPermissionModal();
+    if (callMicWarningBtn) callMicWarningBtn.classList.add('hidden');
+
+    // If currently in a call, bind this new track to localStream & WebRTC peerConnection!
+    if (localStream) {
+      // Stop old dead audio tracks
+      localStream.getAudioTracks().forEach(t => {
+        t.stop();
+        localStream.removeTrack(t);
+      });
+      localStream.addTrack(newAudioTrack);
+    } else {
+      localStream = freshStream;
+    }
+
+    if (peerConnection) {
+      const senders = peerConnection.getSenders();
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+      if (audioSender) {
+        await audioSender.replaceTrack(newAudioTrack);
+        console.log('[WebRTC] Replaced WebRTC audio track with new granted microphone track.');
+      } else {
+        peerConnection.addTrack(newAudioTrack, localStream);
+        console.log('[WebRTC] Added new microphone track to active peer connection.');
+      }
+    }
+
+    isMicMuted = false;
+    if (iosMuteBtn) iosMuteBtn.classList.remove('muted');
+    if (iosMuteLabel) iosMuteLabel.textContent = 'Mute';
+    if (activeCallStatus) {
+      activeCallStatus.textContent = callType === 'video' ? 'Video Call Active ✓' : 'Voice Call Active ✓';
+    }
+
+    alert('🎙️ Microphone access granted! Your voice is now transmitting.');
+    return freshStream;
+
+  } catch (err) {
+    console.warn('[Media] Microphone re-grant attempt failed:', err.name, err.message);
+    isMicPermissionBlocked = true;
+    if (callMicWarningBtn) callMicWarningBtn.classList.remove('hidden');
+
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      showMicPermissionModal('Microphone permission is blocked in your browser site settings. Follow the instructions below to enable it.');
+    } else {
+      alert(`⚠️ Could not access microphone: ${err.message || 'Permission denied'}`);
+    }
+    return null;
+  }
+}
+
+if (grantMicPermBtn) grantMicPermBtn.addEventListener('click', requestAndEnableMicrophone);
+if (closeMicPermBtn) closeMicPermBtn.addEventListener('click', hideMicPermissionModal);
+if (callMicWarningBtn) callMicWarningBtn.addEventListener('click', () => {
+  requestAndEnableMicrophone();
+});
+
+// Auto-detect permission status changes in modern browsers
+try {
+  if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+    navigator.permissions.query({ name: 'microphone' }).then(perm => {
+      perm.onchange = () => {
+        console.log('[Permissions API] Microphone state changed to:', perm.state);
+        if (perm.state === 'granted') {
+          if (isMicPermissionBlocked || (peerConnection && localStream && localStream.getAudioTracks().length === 0)) {
+            requestAndEnableMicrophone();
+          }
+        } else if (perm.state === 'denied') {
+          isMicPermissionBlocked = true;
+          if (callMicWarningBtn) callMicWarningBtn.classList.remove('hidden');
+        }
+      };
+    }).catch(() => {});
+  }
+} catch (e) {}
 
 // Camera switching logic for switching between front/back camera
 async function switchCamera() {
