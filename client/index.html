@@ -461,13 +461,13 @@
 
   <!-- 4. ACTIVE CALL OVERLAY (iOS Native Phone Screen) -->
   <div id="active-call-overlay" class="call-modal-overlay active-call-screen hidden">
+    <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
+    <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
+
     <!-- Video Streams Area -->
     <div class="video-grid-container" id="video-streams-container">
       <!-- Remote Video (takes up full background) -->
       <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
-      
-      <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
-      <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
       
       <!-- Local Video (small picture-in-picture floating box) -->
       <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>
