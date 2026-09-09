@@ -2637,6 +2637,92 @@ async function processQueuedIceCandidates() {
 
 
 
+// --- iOS Call Screen UI Selectors & DTMF Audio Synthesizer ---
+const iosAudioBtn = document.getElementById('ios-audio-btn');
+const iosFacetimeBtn = document.getElementById('ios-facetime-btn');
+const iosFacetimeLabel = document.getElementById('ios-facetime-label');
+const iosMuteBtn = document.getElementById('ios-mute-btn');
+const iosMuteIcon = document.getElementById('ios-mute-icon');
+const iosMuteLabel = document.getElementById('ios-mute-label');
+const iosMoreBtn = document.getElementById('ios-more-btn');
+const iosEndBtn = document.getElementById('ios-end-btn');
+const iosKeypadBtn = document.getElementById('ios-keypad-btn');
+const iosKeypadOverlay = document.getElementById('ios-keypad-overlay');
+const closeKeypadBtn = document.getElementById('close-keypad-btn');
+const hideKeypadBtn = document.getElementById('hide-keypad-btn');
+const keypadDisplay = document.getElementById('keypad-display');
+
+// Standard Dual-Tone Multi-Frequency (DTMF) Audio Generator
+const DTMF_FREQS = {
+  '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+  '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+  '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+  '*': [941, 1209], '0': [941, 1336], '#': [941, 1477]
+};
+
+let dtmfAudioCtx = null;
+function playDTMFTone(key) {
+  if (!DTMF_FREQS[key]) return;
+  try {
+    if (!dtmfAudioCtx) dtmfAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (dtmfAudioCtx.state === 'suspended') dtmfAudioCtx.resume();
+    
+    const [f1, f2] = DTMF_FREQS[key];
+    const osc1 = dtmfAudioCtx.createOscillator();
+    const osc2 = dtmfAudioCtx.createOscillator();
+    const gain = dtmfAudioCtx.createGain();
+    
+    osc1.frequency.value = f1;
+    osc2.frequency.value = f2;
+    gain.gain.value = 0.12;
+    
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(dtmfAudioCtx.destination);
+    
+    osc1.start();
+    osc2.start();
+    
+    setTimeout(() => {
+      osc1.stop();
+      osc2.stop();
+      osc1.disconnect();
+      osc2.disconnect();
+    }, 120);
+  } catch (e) {
+    console.warn('DTMF audio error:', e.message);
+  }
+}
+
+async function toggleAudioOutputDevice() {
+  if (remoteAudio && typeof remoteAudio.setSinkId === 'function') {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+      if (audioOutputs.length > 0) {
+        let currentSink = remoteAudio.sinkId || 'default';
+        let currentIndex = audioOutputs.findIndex(d => d.deviceId === currentSink);
+        let nextIndex = (currentIndex + 1) % audioOutputs.length;
+        let nextDevice = audioOutputs[nextIndex];
+        await remoteAudio.setSinkId(nextDevice.deviceId);
+        if (remoteVideo) await remoteVideo.setSinkId(nextDevice.deviceId);
+        if (iosAudioBtn) iosAudioBtn.classList.add('active-on');
+        alert(`🔊 Audio Output routed to: ${nextDevice.label || 'Audio Device (' + (nextIndex + 1) + ')'}`);
+        return;
+      }
+    } catch (err) {
+      console.warn('setSinkId error:', err.message);
+    }
+  }
+  
+  if (remoteAudio) {
+    const isMax = remoteAudio.volume >= 0.95;
+    remoteAudio.volume = isMax ? 0.5 : 1.0;
+    if (iosAudioBtn) iosAudioBtn.classList.toggle('active-on', !isMax);
+    alert(`🔊 Speaker Volume set to: ${isMax ? '50%' : '100% (Maximum Volume)'}`);
+  }
+}
+
 function toggleLocalMicrophone() {
   if (localStream) {
     const audioTrack = localStream.getAudioTracks()[0];
@@ -2644,52 +2730,47 @@ function toggleLocalMicrophone() {
       isMicMuted = !isMicMuted;
       audioTrack.enabled = !isMicMuted;
       
-      toggleMicBtn.classList.toggle('muted', isMicMuted);
-      toggleMicBtn.title = isMicMuted ? 'Unmute Microphone' : 'Mute Microphone';
+      if (iosMuteBtn) iosMuteBtn.classList.toggle('muted', isMicMuted);
+      if (iosMuteLabel) iosMuteLabel.textContent = isMicMuted ? 'Unmute' : 'Mute';
+      if (toggleMicBtn) toggleMicBtn.classList.toggle('muted', isMicMuted);
       
-      // Update Mic toggle icon (active vs muted)
       if (isMicMuted) {
-        toggleMicBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17l-1.98-1.98V5c0-1.66-1.34-3-3-3S7 3.34 7 5v6c0 .17.02.33.05.5L4.08 8.53C4.03 8.03 4 7.52 4 7c0-.55-.45-1-1-1s-1 .45-1 1c0 1.25.26 2.45.72 3.53L1.39 12.22l1.42 1.42 18.38 18.38 1.42-1.42-7.63-7.63zM9 5c0-.55.45-1 1-1s1 .45 1 1v4.17L9 7.17V5zm2 12.92v3.08h2v-3.08c3.28-.48 6-3.3 6-6.72h-1.7c0 3-2.54 5.1-5.3 5.1-.73 0-1.4-.15-2.01-.43l-1.25 1.25c.98.54 2.1.88 3.26.92z"/>
-          </svg>
-        `;
+        if (iosMuteIcon) iosMuteIcon.innerHTML = `<path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17l-1.98-1.98V5c0-1.66-1.34-3-3-3S7 3.34 7 5v6c0 .17.02.33.05.5L4.08 8.53C4.03 8.03 4 7.52 4 7c0-.55-.45-1-1-1s-1 .45-1 1c0 1.25.26 2.45.72 3.53L1.39 12.22l1.42 1.42 18.38 18.38 1.42-1.42-7.63-7.63zM9 5c0-.55.45-1 1-1s1 .45 1 1v4.17L9 7.17V5zm2 12.92v3.08h2v-3.08c3.28-.48 6-3.3 6-6.72h-1.7c0 3-2.54 5.1-5.3 5.1-.73 0-1.4-.15-2.01-.43l-1.25 1.25c.98.54 2.1.88 3.26.92z"/>`;
       } else {
-        toggleMicBtn.innerHTML = `
-          <svg id="mic-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-          </svg>
-        `;
+        if (iosMuteIcon) iosMuteIcon.innerHTML = `<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>`;
       }
     }
   }
 }
 
 function toggleLocalVideo() {
-  if (localStream && callType === 'video') {
+  if (localStream) {
     const videoTrack = localStream.getVideoTracks()[0];
     if (videoTrack) {
       isVideoPaused = !isVideoPaused;
       videoTrack.enabled = !isVideoPaused;
       
-      toggleVideoBtn.classList.toggle('camera-off', isVideoPaused);
-      toggleVideoBtn.title = isVideoPaused ? 'Enable Camera' : 'Disable Camera';
-      localVideo.classList.toggle('hidden', isVideoPaused);
-
-      // Update Camera toggle icon (active vs off)
-      if (isVideoPaused) {
-        toggleVideoBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M18 10.48V6c0-1.1-.9-2-2-2H6.83l2 2H16v7.17l2 2v-4.69l4 4v-11l-4 4zM2.81 2.81L1.39 4.22l3.41 3.41C4.3 7.8 4 8.37 4 9v10c0 1.1.9 2 2 2h12c.34 0 .67-.09.96-.24l2.82 2.82 1.41-1.41L2.81 2.81zM6 19v-9.17l9.17 9.17H6z"/>
-          </svg>
-        `;
-      } else {
-        toggleVideoBtn.innerHTML = `
-          <svg id="video-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 16H5V8h9v8z"/>
-          </svg>
-        `;
+      if (iosFacetimeBtn) iosFacetimeBtn.classList.toggle('active-on', !isVideoPaused);
+      if (localVideo) localVideo.classList.toggle('hidden', isVideoPaused);
+      if (videoStreamsContainer) {
+        if (!isVideoPaused) videoStreamsContainer.classList.remove('hidden');
       }
+    } else {
+      // Upgrade audio call to FaceTime video call
+      alert('📷 Enabling camera for FaceTime video...');
+      getMediaStreamWithFallback('video').then(newStream => {
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        if (newVideoTrack && localStream) {
+          localStream.addTrack(newVideoTrack);
+          if (localVideo) localVideo.srcObject = localStream;
+          if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
+          if (peerConnection) {
+            peerConnection.addTrack(newVideoTrack, localStream);
+          }
+          callType = 'video';
+          if (iosFacetimeBtn) iosFacetimeBtn.classList.add('active-on');
+        }
+      }).catch(e => console.warn('Facetime upgrade failed:', e.message));
     }
   }
 }
@@ -2704,13 +2785,11 @@ function stopUserCall() {
 function cleanupCallConnection() {
   console.log('Cleaning up WebRTC calling states.');
   
-  // Stop sound notifications
   dialingSound.pause();
   dialingSound.currentTime = 0;
   ringtoneSound.pause();
   ringtoneSound.currentTime = 0;
 
-  // Clear timers
   stopCallTimer();
   if (iceDisconnectTimeout) {
     clearTimeout(iceDisconnectTimeout);
@@ -2719,50 +2798,32 @@ function cleanupCallConnection() {
   iceCandidatesQueue = [];
   isSettingRemoteDescription = false;
 
-  // Close media tracks
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
   }
 
-  // Clear peer connection
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
   }
 
   remoteStream = null;
-  localVideo.srcObject = null;
-  remoteVideo.srcObject = null;
-  if (remoteAudio) {
-    remoteAudio.srcObject = null;
-  }
+  if (localVideo) localVideo.srcObject = null;
+  if (remoteVideo) remoteVideo.srcObject = null;
+  if (remoteAudio) remoteAudio.srcObject = null;
 
-  // Reset Control buttons
   isMicMuted = false;
   isVideoPaused = false;
-  toggleMicBtn.classList.remove('muted');
-  toggleMicBtn.title = 'Mute Microphone';
-  toggleMicBtn.innerHTML = `
-    <svg id="mic-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-    </svg>
-  `;
-  
-  toggleVideoBtn.classList.remove('camera-off');
-  toggleVideoBtn.title = 'Disable Camera';
-  toggleVideoBtn.innerHTML = `
-    <svg id="video-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-      <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 16H5V8h9v8z"/>
-    </svg>
-  `;
-  localVideo.classList.remove('hidden');
 
-  // Hide Overlays
+  if (iosMuteBtn) iosMuteBtn.classList.remove('muted');
+  if (iosMuteLabel) iosMuteLabel.textContent = 'Mute';
+  if (iosFacetimeBtn) iosFacetimeBtn.classList.remove('active-on');
+  if (iosAudioBtn) iosAudioBtn.classList.remove('active-on');
+  if (iosKeypadOverlay) iosKeypadOverlay.classList.add('hidden');
+
   incomingCallOverlay.classList.add('hidden');
   activeCallOverlay.classList.add('hidden');
-  switchCameraBtn.classList.add('hidden');
-  toggleQualityBtn.classList.add('hidden');
 
   if (iceFailedTimeout) {
     clearTimeout(iceFailedTimeout);
@@ -2771,13 +2832,10 @@ function cleanupCallConnection() {
   
   videoInputDevices = [];
   currentVideoDeviceIndex = 0;
-  iceCandidatesQueue = []; // Clear queue
+  iceCandidatesQueue = [];
   activeCallTargetSocketId = null;
   callType = null;
 }
-
-
-
 
 // Call Timer Helpers
 function startCallTimer() {
@@ -2802,9 +2860,44 @@ function stopCallTimer() {
 // Bind Button Listeners
 acceptCallBtn.addEventListener('click', acceptIncomingCall);
 declineCallBtn.addEventListener('click', declineIncomingCall);
-hangupCallBtn.addEventListener('click', stopUserCall);
-toggleMicBtn.addEventListener('click', toggleLocalMicrophone);
-toggleVideoBtn.addEventListener('click', toggleLocalVideo);
+if (hangupCallBtn) hangupCallBtn.addEventListener('click', stopUserCall);
+if (toggleMicBtn) toggleMicBtn.addEventListener('click', toggleLocalMicrophone);
+if (toggleVideoBtn) toggleVideoBtn.addEventListener('click', toggleLocalVideo);
+
+if (iosMuteBtn) iosMuteBtn.addEventListener('click', toggleLocalMicrophone);
+if (iosFacetimeBtn) iosFacetimeBtn.addEventListener('click', toggleLocalVideo);
+if (iosEndBtn) iosEndBtn.addEventListener('click', stopUserCall);
+if (iosAudioBtn) iosAudioBtn.addEventListener('click', toggleAudioOutputDevice);
+if (iosMoreBtn) iosMoreBtn.addEventListener('click', () => {
+  if (videoInputDevices.length > 1) {
+    switchCamera();
+  } else {
+    alert('ℹ️ Call Options: WebRTC HD Audio & Video stream active.');
+  }
+});
+
+if (iosKeypadBtn) iosKeypadBtn.addEventListener('click', () => {
+  if (iosKeypadOverlay) {
+    iosKeypadOverlay.classList.remove('hidden');
+    if (keypadDisplay) keypadDisplay.textContent = '';
+  }
+});
+
+if (closeKeypadBtn) closeKeypadBtn.addEventListener('click', () => {
+  if (iosKeypadOverlay) iosKeypadOverlay.classList.add('hidden');
+});
+
+if (hideKeypadBtn) hideKeypadBtn.addEventListener('click', () => {
+  if (iosKeypadOverlay) iosKeypadOverlay.classList.add('hidden');
+});
+
+document.querySelectorAll('.dial-key').forEach(keyBtn => {
+  keyBtn.addEventListener('click', () => {
+    const key = keyBtn.getAttribute('data-key');
+    playDTMFTone(key);
+    if (keypadDisplay) keypadDisplay.textContent += key;
+  });
+});
 
 // Camera switching logic for switching between front/back camera
 async function switchCamera() {

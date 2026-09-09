@@ -459,79 +459,132 @@
     </div>
   </div>
 
-  <!-- 4. ACTIVE CALL OVERLAY -->
+  <!-- 4. ACTIVE CALL OVERLAY (iOS Native Phone Screen) -->
   <div id="active-call-overlay" class="call-modal-overlay active-call-screen hidden">
     <!-- Video Streams Area -->
     <div class="video-grid-container" id="video-streams-container">
       <!-- Remote Video (takes up full background) -->
       <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
       
-      <!-- Hidden Remote Audio (forces iOS Safari to route WebRTC audio to speakers/Bluetooth instead of earpiece receiver) -->
+      <!-- Hidden Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
       <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></audio>
       
       <!-- Local Video (small picture-in-picture floating box) -->
       <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>
     </div>
 
-    <!-- Audio Call Profile Placeholder -->
-    <div id="audio-call-placeholder" class="audio-call-placeholder hidden">
-      <div class="calling-avatar-wrapper">
-        <div class="avatar call-avatar-breathing" id="active-call-avatar">?</div>
-        <div class="pulse-ring ring-1"></div>
-        <div class="pulse-ring ring-2"></div>
-        <div class="pulse-ring ring-3"></div>
+    <!-- iOS Native Call Screen Container -->
+    <div id="ios-call-container" class="ios-call-container">
+      <!-- Top Section: Call Header & Live Timer -->
+      <div class="ios-call-header">
+        <div class="ios-call-timer-wrapper">
+          <span class="ios-timer-icon">⏹</span>
+          <span id="call-timer">00:00</span>
+        </div>
+        <h1 id="active-call-peer-name" class="ios-caller-name">User</h1>
+        <p id="active-call-status" class="ios-call-status">Voice Call Connected</p>
+        <div id="call-diagnostic-log" class="ios-diagnostic-log">WebRTC Initializing...</div>
       </div>
-      <h2 id="active-call-peer-name">User</h2>
-      <p id="active-call-status">Voice Call Connected</p>
-      <div id="call-diagnostic-log" style="font-size: 0.75rem; color: #ff9500; font-family: monospace; text-align: center; margin-top: 5px; opacity: 0.85;">WebRTC Initializing...</div>
+
+      <!-- Center Avatar (shown during ringer / audio call mode) -->
+      <div id="audio-call-placeholder" class="audio-call-placeholder">
+        <div class="calling-avatar-wrapper">
+          <div class="avatar call-avatar-breathing" id="active-call-avatar">?</div>
+          <div class="pulse-ring ring-1"></div>
+          <div class="pulse-ring ring-2"></div>
+          <div class="pulse-ring ring-3"></div>
+        </div>
+      </div>
+
+      <!-- iOS Native Call Action Grid (2 Rows x 3 Columns) -->
+      <div class="ios-call-action-grid">
+        <!-- 1. Audio -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-audio-btn" class="ios-btn-circle" title="Audio Device Output">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label">Audio</span>
+        </div>
+
+        <!-- 2. FaceTime / Video -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-facetime-btn" class="ios-btn-circle" title="FaceTime / Toggle Video">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label" id="ios-facetime-label">FaceTime</span>
+        </div>
+
+        <!-- 3. Mute -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-mute-btn" class="ios-btn-circle" title="Mute Microphone">
+            <svg id="ios-mute-icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label" id="ios-mute-label">Mute</span>
+        </div>
+
+        <!-- 4. More -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-more-btn" class="ios-btn-circle" title="More Call Options">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label">More</span>
+        </div>
+
+        <!-- 5. End -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-end-btn" class="ios-btn-circle ios-btn-end" title="End Call">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+              <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label">End</span>
+        </div>
+
+        <!-- 6. Keypad -->
+        <div class="ios-grid-item">
+          <button type="button" id="ios-keypad-btn" class="ios-btn-circle" title="Show Dial Keypad">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+          <span class="ios-btn-label">Keypad</span>
+        </div>
+      </div>
     </div>
 
+    <!-- Keypad Dialpad Modal Overlay -->
+    <div id="ios-keypad-overlay" class="ios-keypad-overlay hidden">
+      <div class="ios-keypad-card">
+        <div class="ios-keypad-header">
+          <div id="keypad-display" class="keypad-display"></div>
+          <button type="button" id="close-keypad-btn" class="close-keypad-btn" title="Close Keypad">&times;</button>
+        </div>
 
-    <!-- Call Info / Timer -->
-    <div class="call-info-banner">
-      <span id="call-timer">00:00</span>
-    </div>
+        <div class="ios-dialpad-grid">
+          <button type="button" class="dial-key" data-key="1"><span class="key-num">1</span></button>
+          <button type="button" class="dial-key" data-key="2"><span class="key-num">2</span><span class="key-sub">ABC</span></button>
+          <button type="button" class="dial-key" data-key="3"><span class="key-num">3</span><span class="key-sub">DEF</span></button>
+          <button type="button" class="dial-key" data-key="4"><span class="key-num">4</span><span class="key-sub">GHI</span></button>
+          <button type="button" class="dial-key" data-key="5"><span class="key-num">5</span><span class="key-sub">JKL</span></button>
+          <button type="button" class="dial-key" data-key="6"><span class="key-num">6</span><span class="key-sub">MNO</span></button>
+          <button type="button" class="dial-key" data-key="7"><span class="key-num">7</span><span class="key-sub">PQRS</span></button>
+          <button type="button" class="dial-key" data-key="8"><span class="key-num">8</span><span class="key-sub">TUV</span></button>
+          <button type="button" class="dial-key" data-key="9"><span class="key-num">9</span><span class="key-sub">WXYZ</span></button>
+          <button type="button" class="dial-key" data-key="*"><span class="key-num">*</span></button>
+          <button type="button" class="dial-key" data-key="0"><span class="key-num">0</span><span class="key-sub">+</span></button>
+          <button type="button" class="dial-key" data-key="#"><span class="key-num">#</span></button>
+        </div>
 
-    <!-- Floating Call Toolbar -->
-    <div class="call-control-toolbar">
-      <!-- Microphone Toggle -->
-      <button type="button" id="toggle-mic-btn" class="btn-control-icon" title="Mute Microphone">
-        <!-- Mic Active SVG -->
-        <svg id="mic-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-        </svg>
-      </button>
-
-      <!-- Video Camera Toggle -->
-      <button type="button" id="toggle-video-btn" class="btn-control-icon" title="Toggle Camera">
-        <!-- Video Active SVG -->
-        <svg id="video-active-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 16H5V8h9v8z"/>
-        </svg>
-      </button>
-
-      <!-- Switch Camera Toggle (Mobile front/back switch or webcam selection) -->
-      <button type="button" id="switch-camera-btn" class="btn-control-icon hidden" title="Switch Camera">
-        <!-- Switch camera icon with circular rotation arrows -->
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M19 8h-1.17L17 6H7L6.17 8H5c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-7 11.5c-2.48 0-4.5-2.02-4.5-4.5h1.5l-2.25-2.25L4.5 15h1.5c0 3.31 2.69 6 6 6 3.01 0 5.48-2.21 5.92-5.1h-1.55c-.41 2.02-2.18 3.5-4.37 3.5zm4.82-5.75L18.5 15h-1.5c0-3.31-2.69-6-6-6-3.01 0-5.48 2.21-5.92 5.1h1.55c.41-2.02 2.18-3.5 4.37-3.5 2.48 0 4.5 2.02 4.5 4.5H15l2.25 2.25.07-.15z"/>
-        </svg>
-      </button>
-
-
-      <!-- Video Quality Toggle (High Quality vs Low Quality) -->
-      <button type="button" id="toggle-quality-btn" class="btn-control-icon hidden" title="Switch Video Quality (HQ/LQ)">
-        <span id="quality-btn-label" style="font-weight: 800; font-size: 0.8rem; font-family: inherit;">HD</span>
-      </button>
-
-
-      <!-- Hangup Button -->
-      <button type="button" id="hangup-call-btn" class="btn-control-icon btn-hangup" title="End Call">
-        <!-- End Call SVG -->
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
-        </svg>
-      </button>
+        <button type="button" id="hide-keypad-btn" class="btn-hide-keypad">Hide Keypad</button>
+      </div>
     </div>
   </div>
 
