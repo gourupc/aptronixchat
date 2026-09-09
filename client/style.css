@@ -3300,5 +3300,92 @@ body, html {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* --- Microphone Permission Detection & Request Modal Styles --- */
+.mic-perm-card {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  color: var(--text-main);
+  animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mic-perm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mic-perm-icon-wrapper {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.mic-perm-card h3 {
+  margin: 12px 0 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mic-perm-card p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.mic-perm-instructions {
+  margin-top: 14px;
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.mic-perm-instructions ol {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+.ios-mic-warning-btn {
+  background: rgba(255, 59, 48, 0.25);
+  border: 1px solid rgba(255, 59, 48, 0.5);
+  color: #ff453a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s, background-color 0.2s;
+  animation: pulseFlash 1.5s infinite alternate;
+}
+
+.ios-mic-warning-btn:hover {
+  background: rgba(255, 59, 48, 0.4);
+  transform: scale(1.03);
+}
+
+
 
 
