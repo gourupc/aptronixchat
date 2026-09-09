@@ -466,8 +466,8 @@
       <!-- Remote Video (takes up full background) -->
       <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
       
-      <!-- Hidden Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
-      <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></audio>
+      <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
+      <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
       
       <!-- Local Video (small picture-in-picture floating box) -->
       <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>

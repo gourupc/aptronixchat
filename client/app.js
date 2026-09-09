@@ -2439,6 +2439,33 @@ function createPeerConnection() {
     }
   };
 
+// Web Audio API Stream Relay for WebRTC incoming voice (bypasses browser autoplay blocks)
+let remoteAudioCtx = null;
+let remoteAudioSourceNode = null;
+
+function attachRemoteAudioWebAudio(stream) {
+  try {
+    if (!remoteAudioCtx) {
+      remoteAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (remoteAudioCtx.state === 'suspended') {
+      remoteAudioCtx.resume().catch(e => console.warn('AudioContext resume error:', e));
+    }
+    
+    if (remoteAudioSourceNode) {
+      try { remoteAudioSourceNode.disconnect(); } catch (e) {}
+    }
+    
+    if (stream && stream.getAudioTracks().length > 0) {
+      remoteAudioSourceNode = remoteAudioCtx.createMediaStreamSource(stream);
+      remoteAudioSourceNode.connect(remoteAudioCtx.destination);
+      console.log('[WebRTC Audio] Remote audio track bound to Web Audio API destination.');
+    }
+  } catch (e) {
+    console.warn('[WebRTC Audio] WebAudio binding error:', e.message);
+  }
+}
+
   // Handle incoming stream
   peerConnection.ontrack = (event) => {
     console.log('Received remote media stream track:', event.track.kind);
@@ -2465,34 +2492,24 @@ function createPeerConnection() {
       remoteAudio.srcObject = remoteStream;
     }
     
-    // Explicitly play remote video to bypass browser autoplay policies
-    remoteVideo.play().catch(e => {
-      console.warn('Video Autoplay blocked. Adding fallback user gesture listener:', e.message);
-      const playFallback = () => {
-        remoteVideo.play().catch(err => console.error('Fallback video playback failed:', err));
-      };
-      document.addEventListener('click', playFallback, { once: true });
-      document.addEventListener('touchstart', playFallback, { once: true });
-    });
+    // Web Audio API destination stream binding (guarantees audio output on iOS & Bluetooth)
+    attachRemoteAudioWebAudio(remoteStream);
 
-    // Explicitly play remote audio to bypass browser autoplay policies (forces audio to bluetooth/speaker on iOS)
-    if (remoteAudio) {
-      remoteAudio.play().catch(e => {
-        console.warn('Audio Autoplay blocked. Adding fallback user gesture listener:', e.message);
-        const playAudioFallback = () => {
-          remoteAudio.play().catch(err => console.error('Fallback audio playback failed:', err));
-        };
-        document.addEventListener('click', playAudioFallback, { once: true });
-        document.addEventListener('touchstart', playAudioFallback, { once: true });
-      });
-    }
+    const unlockPlayback = () => {
+      if (remoteAudioCtx && remoteAudioCtx.state === 'suspended') {
+        remoteAudioCtx.resume().catch(() => {});
+      }
+      if (remoteAudio) remoteAudio.play().catch(() => {});
+      if (remoteVideo) remoteVideo.play().catch(() => {});
+    };
+
+    unlockPlayback();
+    document.addEventListener('click', unlockPlayback);
+    document.addEventListener('touchstart', unlockPlayback, { passive: true });
 
     // Handle track unmute event
     event.track.onunmute = () => {
-      remoteVideo.play().catch(err => console.warn('Unmute video play retry failed:', err.message));
-      if (remoteAudio) {
-        remoteAudio.play().catch(err => console.warn('Unmute audio play retry failed:', err.message));
-      }
+      unlockPlayback();
     };
     
     if (callType === 'audio') {
