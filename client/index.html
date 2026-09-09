@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AetherAIFree</title>
   <!-- Custom Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body class="dark-theme"> <!-- Default to Dark Theme like modern Telegram -->  <!-- 0. STEALTH SECURITY GATE (Fake AI Search Portal Mask) -->
   <div id="security-mask-gate" class="security-mask-gate light-theme">
@@ -461,13 +461,13 @@
 
   <!-- 4. ACTIVE CALL OVERLAY (iOS Native Phone Screen) -->
   <div id="active-call-overlay" class="call-modal-overlay active-call-screen hidden">
+    <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
+    <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
+
     <!-- Video Streams Area -->
     <div class="video-grid-container" id="video-streams-container">
       <!-- Remote Video (takes up full background) -->
       <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
-      
-      <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
-      <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
       
       <!-- Local Video (small picture-in-picture floating box) -->
       <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>
@@ -681,7 +681,7 @@
     <div id="emoji-grid" class="emoji-grid"></div>
   </div>
 
-  <!-- Main Script - Deferred to run after HTML parsing completes (Socket.IO client library will load dynamically on start) -->
-  <script src="app.js?v=18" defer></script>
+  <!-- Main Script - Deferred to run after HTML parsing completes -->
+  <script src="app.js?v=20" defer></script>
 </body>
 </html>

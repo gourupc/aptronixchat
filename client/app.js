@@ -2212,18 +2212,28 @@ async function initiateUserCall(toSocketId, peerName, type) {
   activeCallTargetSocketId = toSocketId;
   callType = type;
 
+  // Unlock Web Audio API context during user gesture
+  try {
+    if (!remoteAudioCtx) {
+      remoteAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (remoteAudioCtx.state === 'suspended') {
+      remoteAudioCtx.resume().catch(() => {});
+    }
+  } catch (e) {}
+
   if (remoteAudio) {
     remoteAudio.play().catch(() => {});
   }
 
   // Show active call overlay
-  activeCallOverlay.classList.remove('hidden');
+  if (activeCallOverlay) activeCallOverlay.classList.remove('hidden');
   
   if (type === 'video') {
-    videoStreamsContainer.classList.remove('hidden');
-    audioCallPlaceholder.classList.add('hidden');
-    toggleVideoBtn.classList.remove('hidden');
-    toggleQualityBtn.classList.remove('hidden');
+    if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
+    if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
+    if (toggleVideoBtn) toggleVideoBtn.classList.remove('hidden');
+    if (toggleQualityBtn) toggleQualityBtn.classList.remove('hidden');
     
     // Set default labels
     isHighQuality = true;
@@ -2233,16 +2243,18 @@ async function initiateUserCall(toSocketId, peerName, type) {
       toggleQualityBtn.title = 'Switch to Low Quality (SD)';
     }
   } else {
-    videoStreamsContainer.classList.add('hidden');
-    audioCallPlaceholder.classList.remove('hidden');
-    toggleVideoBtn.classList.add('hidden'); // Hide camera control in audio calls
-    switchCameraBtn.classList.add('hidden');
-    toggleQualityBtn.classList.add('hidden');
+    if (videoStreamsContainer) videoStreamsContainer.classList.add('hidden');
+    if (audioCallPlaceholder) audioCallPlaceholder.classList.remove('hidden');
+    if (toggleVideoBtn) toggleVideoBtn.classList.add('hidden');
+    if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
+    if (toggleQualityBtn) toggleQualityBtn.classList.add('hidden');
     
-    activeCallPeerName.textContent = peerName;
-    activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
-    activeCallAvatar.style.backgroundColor = getAvatarColor(peerName);
-    activeCallStatus.textContent = 'Calling...';
+    if (activeCallPeerName) activeCallPeerName.textContent = peerName;
+    if (activeCallAvatar) {
+      activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
+      activeCallAvatar.style.backgroundColor = getAvatarColor(peerName);
+    }
+    if (activeCallStatus) activeCallStatus.textContent = 'Calling...';
   }
 
   try {
@@ -2256,16 +2268,16 @@ async function initiateUserCall(toSocketId, peerName, type) {
     localStream = await getMediaStreamWithFallback(type);
 
     if (type === 'video') {
-      localVideo.srcObject = localStream;
+      if (localVideo) localVideo.srcObject = localStream;
       
       // Detect multiple video cameras after permission is granted
       navigator.mediaDevices.enumerateDevices().then(devices => {
         videoInputDevices = devices.filter(d => d.kind === 'videoinput');
         console.log(`Discovered ${videoInputDevices.length} cameras:`, videoInputDevices);
         if (videoInputDevices.length > 1) {
-          switchCameraBtn.classList.remove('hidden');
+          if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
         } else {
-          switchCameraBtn.classList.add('hidden');
+          if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
         }
       }).catch(e => console.warn('Video device discovery error:', e));
     }
@@ -2299,27 +2311,37 @@ async function initiateUserCall(toSocketId, peerName, type) {
 }
 
 async function acceptIncomingCall() {
-  const offerData = incomingCallOverlay.dataset.offer;
+  const offerData = incomingCallOverlay ? incomingCallOverlay.dataset.offer : null;
   if (!offerData || !socket) return;
   const offer = JSON.parse(offerData);
 
-  incomingCallOverlay.classList.add('hidden');
+  if (incomingCallOverlay) incomingCallOverlay.classList.add('hidden');
   ringtoneSound.pause();
   ringtoneSound.currentTime = 0;
+
+  // Unlock Web Audio API context during user gesture
+  try {
+    if (!remoteAudioCtx) {
+      remoteAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (remoteAudioCtx.state === 'suspended') {
+      remoteAudioCtx.resume().catch(() => {});
+    }
+  } catch (e) {}
 
   if (remoteAudio) {
     remoteAudio.play().catch(() => {});
   }
 
-  activeCallOverlay.classList.remove('hidden');
+  if (activeCallOverlay) activeCallOverlay.classList.remove('hidden');
   
-  const peerName = incomingCallerName.textContent;
+  const peerName = incomingCallerName ? incomingCallerName.textContent : 'User';
 
   if (callType === 'video') {
-    videoStreamsContainer.classList.remove('hidden');
-    audioCallPlaceholder.classList.add('hidden');
-    toggleVideoBtn.classList.remove('hidden');
-    toggleQualityBtn.classList.remove('hidden');
+    if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
+    if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
+    if (toggleVideoBtn) toggleVideoBtn.classList.remove('hidden');
+    if (toggleQualityBtn) toggleQualityBtn.classList.remove('hidden');
     
     // Set default labels
     isHighQuality = true;
@@ -2329,16 +2351,18 @@ async function acceptIncomingCall() {
       toggleQualityBtn.title = 'Switch to Low Quality (SD)';
     }
   } else {
-    videoStreamsContainer.classList.add('hidden');
-    audioCallPlaceholder.classList.remove('hidden');
-    toggleVideoBtn.classList.add('hidden');
-    switchCameraBtn.classList.add('hidden');
-    toggleQualityBtn.classList.add('hidden');
+    if (videoStreamsContainer) videoStreamsContainer.classList.add('hidden');
+    if (audioCallPlaceholder) audioCallPlaceholder.classList.remove('hidden');
+    if (toggleVideoBtn) toggleVideoBtn.classList.add('hidden');
+    if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
+    if (toggleQualityBtn) toggleQualityBtn.classList.add('hidden');
     
-    activeCallPeerName.textContent = peerName;
-    activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
-    activeCallAvatar.style.backgroundColor = getAvatarColor(peerName);
-    activeCallStatus.textContent = 'Connecting...';
+    if (activeCallPeerName) activeCallPeerName.textContent = peerName;
+    if (activeCallAvatar) {
+      activeCallAvatar.textContent = peerName.substring(0, 2).toUpperCase();
+      activeCallAvatar.style.backgroundColor = getAvatarColor(peerName);
+    }
+    if (activeCallStatus) activeCallStatus.textContent = 'Connecting...';
   }
 
   try {
@@ -2347,20 +2371,17 @@ async function acceptIncomingCall() {
 
     localStream = await getMediaStreamWithFallback(callType);
 
-
-
-
     if (callType === 'video') {
-      localVideo.srcObject = localStream;
+      if (localVideo) localVideo.srcObject = localStream;
       
       // Detect multiple video cameras after permission is granted
       navigator.mediaDevices.enumerateDevices().then(devices => {
         videoInputDevices = devices.filter(d => d.kind === 'videoinput');
         console.log(`Discovered ${videoInputDevices.length} cameras:`, videoInputDevices);
         if (videoInputDevices.length > 1) {
-          switchCameraBtn.classList.remove('hidden');
+          if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
         } else {
-          switchCameraBtn.classList.add('hidden');
+          if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
         }
       }).catch(e => console.warn('Video device discovery error:', e));
     }
@@ -2387,7 +2408,7 @@ async function acceptIncomingCall() {
     });
 
     if (callType === 'audio') {
-      activeCallStatus.textContent = 'Voice Call Connected';
+      if (activeCallStatus) activeCallStatus.textContent = 'Voice Call Connected';
     }
 
     startCallTimer();
