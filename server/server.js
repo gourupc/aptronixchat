@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -524,13 +524,13 @@ app.post('/api/aether-chat', async (req, res) => {
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     // Map selected model names to active Google Generative API equivalents
-    let targetGeminiModel = 'gemini-3.1-flash-lite';
+    let targetGeminiModel = 'gemini-1.5-flash';
     if (model === 'Gemini 3.5 Flash') {
-      targetGeminiModel = 'gemini-3.1-flash-lite';
+      targetGeminiModel = 'gemini-1.5-flash';
     } else if (model === 'Gemini 2.5 Pro') {
-      targetGeminiModel = 'gemini-flash-lite-latest';
+      targetGeminiModel = 'gemini-1.5-pro';
     } else {
-      targetGeminiModel = 'gemini-3.1-flash-lite';
+      targetGeminiModel = 'gemini-1.5-flash';
     }
 
     const systemInstructionText = `Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks). Do NOT introduce yourself or prefix your response with system metadata or self-identifications.`;
@@ -575,15 +575,15 @@ app.post('/api/aether-chat', async (req, res) => {
       let firstChunkReceived = false;
 
       activeReq = https.request(options, (geminiRes) => {
-        // Handle rate limit or error: Fallback instantly to gemini-3.1-flash-lite!
+        // Handle rate limit or error: Fallback instantly to gemini-1.5-flash!
         if (geminiRes.statusCode !== 200) {
           let errBody = '';
           geminiRes.on('data', c => errBody += c);
           geminiRes.on('end', () => {
-            if (currentModel !== 'gemini-3.1-flash-lite') {
-              console.warn(`[GEMINI STREAM] ${geminiRes.statusCode} on ${currentModel}. Falling back instantly to gemini-3.1-flash-lite...`);
+            if (currentModel !== 'gemini-1.5-flash') {
+              console.warn(`[GEMINI STREAM] ${geminiRes.statusCode} on ${currentModel}. Falling back instantly to gemini-1.5-flash...`);
               res.write(`data: ${JSON.stringify({ type: 'retry', message: `Model is busy. Switching instantly to Gemini 3.1 Flash Lite...` })}\n\n`);
-              runStream('gemini-3.1-flash-lite', 1);
+              runStream('gemini-1.5-flash', 1);
             } else {
               // If lite model also fails, do a short wait then retry
               try {
@@ -614,8 +614,8 @@ app.post('/api/aether-chat', async (req, res) => {
           let errBody = '';
           geminiRes.on('data', c => errBody += c);
           geminiRes.on('end', () => {
-            if (currentModel !== 'gemini-3.1-flash-lite') {
-              runStream('gemini-3.1-flash-lite', 1);
+            if (currentModel !== 'gemini-1.5-flash') {
+              runStream('gemini-1.5-flash', 1);
             } else {
               try {
                 const parsed = JSON.parse(errBody);
@@ -661,8 +661,8 @@ app.post('/api/aether-chat', async (req, res) => {
 
       activeReq.on('error', (err) => {
         console.error('[GEMINI STREAM ERROR]', err);
-        if (currentModel !== 'gemini-3.1-flash-lite') {
-          runStream('gemini-3.1-flash-lite', 1);
+        if (currentModel !== 'gemini-1.5-flash') {
+          runStream('gemini-1.5-flash', 1);
         } else {
           res.write(`data: ${JSON.stringify({ type: 'error', error: 'Network error communicating with Gemini.' })}\n\n`);
           res.end();

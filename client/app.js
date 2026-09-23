@@ -1,4 +1,4 @@
-// ----------------------------------------------------
+﻿// ----------------------------------------------------
 // TELEGRAM CLONE WEB-SOCKET CLIENT CONTROLLER
 // ----------------------------------------------------
 
@@ -623,7 +623,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (aiSearchBtn) aiSearchBtn.addEventListener('click', handleAISearch);
   if (aiSearchInput) {
     aiSearchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleAISearch();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAISearch();
+      }
     });
   }
 
