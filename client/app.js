@@ -128,6 +128,7 @@ const activeCallPeerName = document.getElementById('active-call-peer-name');
 const activeCallStatus = document.getElementById('active-call-status');
 const callDiagnosticLog = document.getElementById('call-diagnostic-log');
 const callTimerDisp = document.getElementById('call-timer');
+const iosCallContainer = document.getElementById('ios-call-container');
 
 function logDiagnostic(msg) {
   console.log(`[Diagnostic] ${msg}`);
@@ -2269,6 +2270,11 @@ async function initiateUserCall(toSocketId, peerName, type) {
     if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
     if (toggleVideoBtn) toggleVideoBtn.classList.remove('hidden');
     if (toggleQualityBtn) toggleQualityBtn.classList.remove('hidden');
+    // Make call container transparent so cameras show through
+    if (iosCallContainer) iosCallContainer.classList.add('video-call-active');
+    // Mark Video button active
+    if (iosFacetimeBtn) iosFacetimeBtn.classList.add('active-on');
+    if (iosFacetimeLabel) iosFacetimeLabel.textContent = 'Camera On';
     
     // Set default labels
     isHighQuality = true;
@@ -2283,6 +2289,8 @@ async function initiateUserCall(toSocketId, peerName, type) {
     if (toggleVideoBtn) toggleVideoBtn.classList.add('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
     if (toggleQualityBtn) toggleQualityBtn.classList.add('hidden');
+    // Restore opaque background for audio call
+    if (iosCallContainer) iosCallContainer.classList.remove('video-call-active');
     
     if (activeCallPeerName) activeCallPeerName.textContent = peerName;
     if (activeCallAvatar) {
@@ -2377,6 +2385,11 @@ async function acceptIncomingCall() {
     if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
     if (toggleVideoBtn) toggleVideoBtn.classList.remove('hidden');
     if (toggleQualityBtn) toggleQualityBtn.classList.remove('hidden');
+    // Make call container transparent so cameras show through
+    if (iosCallContainer) iosCallContainer.classList.add('video-call-active');
+    // Mark Video button active
+    if (iosFacetimeBtn) iosFacetimeBtn.classList.add('active-on');
+    if (iosFacetimeLabel) iosFacetimeLabel.textContent = 'Camera On';
     
     // Set default labels
     isHighQuality = true;
@@ -2391,6 +2404,8 @@ async function acceptIncomingCall() {
     if (toggleVideoBtn) toggleVideoBtn.classList.add('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
     if (toggleQualityBtn) toggleQualityBtn.classList.add('hidden');
+    // Restore opaque background for audio call
+    if (iosCallContainer) iosCallContainer.classList.remove('video-call-active');
     
     if (activeCallPeerName) activeCallPeerName.textContent = peerName;
     if (activeCallAvatar) {
@@ -2833,26 +2848,37 @@ function toggleLocalVideo() {
       videoTrack.enabled = !isVideoPaused;
       
       if (iosFacetimeBtn) iosFacetimeBtn.classList.toggle('active-on', !isVideoPaused);
+      if (iosFacetimeLabel) iosFacetimeLabel.textContent = isVideoPaused ? 'Camera Off' : 'Camera On';
       if (localVideo) localVideo.classList.toggle('hidden', isVideoPaused);
+      
+      // Show/hide full video area + transparent overlay based on camera state
       if (videoStreamsContainer) {
-        if (!isVideoPaused) videoStreamsContainer.classList.remove('hidden');
+        if (!isVideoPaused) {
+          videoStreamsContainer.classList.remove('hidden');
+          if (iosCallContainer) iosCallContainer.classList.add('video-call-active');
+        } else {
+          // Camera paused: show avatar + green background
+          if (iosCallContainer) iosCallContainer.classList.remove('video-call-active');
+        }
       }
     } else {
-      // Upgrade audio call to FaceTime video call
-      alert('📷 Enabling camera for FaceTime video...');
+      // Upgrade audio call → video call
       getMediaStreamWithFallback('video').then(newStream => {
         const newVideoTrack = newStream.getVideoTracks()[0];
         if (newVideoTrack && localStream) {
           localStream.addTrack(newVideoTrack);
           if (localVideo) localVideo.srcObject = localStream;
           if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
+          if (iosCallContainer) iosCallContainer.classList.add('video-call-active');
           if (peerConnection) {
             peerConnection.addTrack(newVideoTrack, localStream);
           }
           callType = 'video';
           if (iosFacetimeBtn) iosFacetimeBtn.classList.add('active-on');
+          if (iosFacetimeLabel) iosFacetimeLabel.textContent = 'Camera On';
         }
-      }).catch(e => console.warn('Facetime upgrade failed:', e.message));
+      }).catch(e => console.warn('Video upgrade failed:', e.message));
+
     }
   }
 }
@@ -2900,11 +2926,14 @@ function cleanupCallConnection() {
 
   if (iosMuteBtn) { iosMuteBtn.classList.remove('muted'); iosMuteBtn.classList.remove('active-on'); }
   if (iosMuteLabel) iosMuteLabel.textContent = 'Mute';
-  if (iosFacetimeBtn) iosFacetimeBtn.classList.remove('active-on');
+  if (iosFacetimeBtn) { iosFacetimeBtn.classList.remove('active-on'); }
+  if (iosFacetimeLabel) iosFacetimeLabel.textContent = 'Video';
   if (iosAudioBtn) iosAudioBtn.classList.remove('active-on');
   if (iosMergeBtn) { iosMergeBtn.classList.remove('merge-active'); iosMergeBtn.classList.remove('active-on'); }
   if (iosKeypadOverlay) iosKeypadOverlay.classList.add('hidden');
   if (mergeCallPanel) mergeCallPanel.classList.add('hidden');
+  // Remove video call transparent mode
+  if (iosCallContainer) iosCallContainer.classList.remove('video-call-active');
 
   incomingCallOverlay.classList.add('hidden');
   activeCallOverlay.classList.add('hidden');

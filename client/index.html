@@ -501,12 +501,11 @@
         </div>
       </div>
 
-      <!-- BOTTOM: 2x3 Action Grid in Dark Pill Card -->
+      <!-- BOTTOM: Action Grid in Dark Pill Card (Mute | Video | Speaker / Merge | End Call) -->
       <div class="wacall-controls-card">
         <div class="wacall-grid">
 
-          <!-- Row 1 -->
-          <!-- 1. Mute -->
+          <!-- ROW 1: Mute | Video | Speaker -->
           <div class="wacall-grid-item">
             <button type="button" id="ios-mute-btn" class="wacall-btn" title="Mute Microphone">
               <svg id="ios-mute-icon" viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
@@ -516,7 +515,6 @@
             <span class="wacall-btn-label" id="ios-mute-label">Mute</span>
           </div>
 
-          <!-- 2. Video / FaceTime -->
           <div class="wacall-grid-item">
             <button type="button" id="ios-facetime-btn" class="wacall-btn" title="Toggle Video">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
@@ -526,7 +524,6 @@
             <span class="wacall-btn-label" id="ios-facetime-label">Video</span>
           </div>
 
-          <!-- 3. Speaker -->
           <div class="wacall-grid-item">
             <button type="button" id="ios-audio-btn" class="wacall-btn" title="Speaker / Audio Output">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
@@ -536,18 +533,9 @@
             <span class="wacall-btn-label">Speaker</span>
           </div>
 
-          <!-- Row 2 -->
-          <!-- 4. More / Switch Camera -->
-          <div class="wacall-grid-item">
-            <button type="button" id="ios-more-btn" class="wacall-btn" title="More Options">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
-                <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
-            </button>
-            <span class="wacall-btn-label">More</span>
-          </div>
+          <!-- ROW 2: (empty) | Merge | End Call -->
+          <div class="wacall-grid-item wacall-empty-cell" aria-hidden="true"></div>
 
-          <!-- 5. Merge Call -->
           <div class="wacall-grid-item">
             <button type="button" id="ios-merge-btn" class="wacall-btn" title="Merge / Conference Call">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
@@ -557,7 +545,6 @@
             <span class="wacall-btn-label">Merge</span>
           </div>
 
-          <!-- 6. End Call -->
           <div class="wacall-grid-item">
             <button type="button" id="ios-end-btn" class="wacall-btn wacall-btn-end" title="End Call">
               <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
@@ -565,16 +552,6 @@
               </svg>
             </button>
             <span class="wacall-btn-label">End Call</span>
-          </div>
-
-          <!-- 7. Keypad (full-width bottom row center) -->
-          <div class="wacall-grid-item wacall-keypad-item">
-            <button type="button" id="ios-keypad-btn" class="wacall-btn" title="Show Dial Keypad">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
-                <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
-            </button>
-            <span class="wacall-btn-label">Keypad</span>
           </div>
 
         </div>

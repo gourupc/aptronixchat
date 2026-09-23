@@ -3052,12 +3052,28 @@ body, html {
   padding: calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 36px);
   box-sizing: border-box;
   z-index: 15;
-  /* Deep dark teal-green gradient – WhatsApp call feel */
+  /* Deep dark teal-green gradient – audio call feel */
   background: linear-gradient(160deg, #0b3d2e 0%, #07261d 35%, #051a14 70%, #020c09 100%);
   overflow: hidden;
+  transition: background 0.4s ease;
 }
 
-/* Decorative bokeh blobs behind the avatar */
+/* VIDEO CALL MODE: make the container transparent so camera feeds show */
+.ios-call-container.video-call-active {
+  background: transparent !important;
+  pointer-events: none; /* let taps pass through to video element */
+}
+/* Re-enable pointer events on child controls */
+.ios-call-container.video-call-active .wacall-top,
+.ios-call-container.video-call-active .wacall-controls-card {
+  pointer-events: all;
+}
+/* Hide the bokeh blob in video mode */
+.ios-call-container.video-call-active::before { display: none; }
+/* Hide avatar / pulse rings in video mode – cameras replace them */
+.ios-call-container.video-call-active #audio-call-placeholder { display: none !important; }
+
+/* Decorative bokeh blobs behind the avatar (audio-only mode) */
 .ios-call-container::before {
   content: '';
   position: absolute;
@@ -3071,6 +3087,43 @@ body, html {
   pointer-events: none;
   z-index: 0;
 }
+
+/* ---- Full-screen video grid ---- */
+.video-grid-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5; /* below ios-call-container (z:15) but above overlay bg */
+  background: #000;
+}
+
+.remote-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Local video: small PiP in top-right corner */
+.local-video-pip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 16px);
+  right: 16px;
+  width: 110px;
+  height: 160px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+  z-index: 20;
+  background: #1a2020;
+  cursor: pointer;
+  transition: opacity 0.25s;
+}
+
+.local-video-pip:hover { opacity: 0.85; }
+
 
 /* ---------- TOP SECTION: caller info ---------- */
 .wacall-top {
@@ -3205,7 +3258,7 @@ body, html {
 .wacall-controls-card {
   width: 100%;
   max-width: 380px;
-  background: rgba(15, 20, 18, 0.75);
+  background: rgba(15, 20, 18, 0.80);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid rgba(255,255,255,0.08);
@@ -3216,7 +3269,18 @@ body, html {
   z-index: 2;
 }
 
-/* 3 columns × 2 rows (+ 1 centered keypad at bottom) */
+/* In video mode make the card slightly more transparent */
+.video-call-active .wacall-controls-card {
+  background: rgba(0, 0, 0, 0.55);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Top bar text has dark shadow so readable over camera feed */
+.video-call-active .wacall-top * {
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.6);
+}
+
+/* 3 columns grid */
 .wacall-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3225,8 +3289,9 @@ body, html {
   align-items: start;
 }
 
-.wacall-keypad-item {
-  grid-column: 2; /* center the keypad in 3-col grid */
+/* Spacer cell in row 2 (replaces deleted More/Keypad) */
+.wacall-empty-cell {
+  pointer-events: none;
 }
 
 .wacall-grid-item {
