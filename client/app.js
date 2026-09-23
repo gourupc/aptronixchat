@@ -36,7 +36,7 @@ try {
 
 let socket = null;
 let currentUsername = '';
-let currentRoom = 'AetherAIFree General';
+let currentRoom = 'AetherAI General';
 let typingTimeout = null;
 let isTypingState = false;
 let activeTypingUsers = new Set();
@@ -103,7 +103,7 @@ let voiceSendBtn = null;
 let micRecordBtn = null;
 let sendBtn = null;
 
-// WebRTC Calling & Modal Elements
+// StreamEngine Calling & Modal Elements
 let incomingCallOverlay = null;
 let incomingCallerName = null;
 let incomingCallerAvatar = null;
@@ -160,8 +160,8 @@ let voiceRecordInterval = null;
 let voiceRecordDuration = 0;
 let voiceStream = null;
 
-// WebRTC Calling Variables
-// WebRTC Element references moved to dynamic binder
+// StreamEngine Calling Variables
+// StreamEngine Element references moved to dynamic binder
 
 let peerConnection = null;
 let localStream = null;
@@ -181,7 +181,7 @@ let iceFailedTimeout = null;
 let currentFacingMode = 'user';
 let publicRoomsCache = [];
 
-// Telegram Features State Variables
+// Aether Features State Variables
 let activeReplyMsg = null;
 let activeEditMsgId = null;
 let contextMenuTargetMsg = null;
@@ -201,7 +201,7 @@ const EMOJI_CATEGORIES = {
 
 
 // --- END-TO-END SIGNALING ENCRYPTION & STEALTH CIPHER MODULE ---
-const SIGNAL_CIPHER_KEY = 'AetherAIFree_Encrypted_WebRTC_Signal_Key_2026_Secure';
+const SIGNAL_CIPHER_KEY = 'AetherAI_Encrypted_StreamEngine_Signal_Key_2026_Secure';
 
 function encryptSignalPayload(data) {
   try {
@@ -259,10 +259,10 @@ async function fetchTurnCredentials() {
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require'
       };
-      console.log('[WebRTC] TURN credentials refreshed:', data.iceServers.length, 'servers loaded.');
+      console.log('[StreamEngine] TURN credentials refreshed:', data.iceServers.length, 'servers loaded.');
     }
   } catch (e) {
-    console.warn('[WebRTC] Could not fetch TURN credentials, using fallback STUN only:', e.message);
+    console.warn('[StreamEngine] Could not fetch TURN credentials, using fallback STUN only:', e.message);
   }
 }
 
@@ -347,7 +347,7 @@ function revealMessengerUI() {
     if (appContainer) appContainer.classList.remove('hidden');
     if (loginContainer) loginContainer.classList.add('hidden');
     currentUsername = savedUsername;
-    currentRoom = localStorage.getItem('tg-last-room') || 'AetherAIFree General';
+    currentRoom = localStorage.getItem('tg-last-room') || 'AetherAI General';
     if (currentUserNameDisp) currentUserNameDisp.textContent = currentUsername;
     if (currentUserAvatarDisp) {
       currentUserAvatarDisp.textContent = currentUsername.substring(0, 2).toUpperCase();
@@ -1179,16 +1179,16 @@ function initializeSocket() {
     cleanupCallConnection(); // End calls if connection drops
   });
 
-  // --- WebRTC Calling Socket Listeners (Encrypted End-to-End Signaling) ---
+  // --- StreamEngine Calling Socket Listeners (Encrypted End-to-End Signaling) ---
   socket.on('incoming-call', async ({ from, username, offer, type }) => {
     console.log(`[Encrypted Signal] Incoming ${type} call from ${username}`);
     
     // Decrypt E2E encrypted SDP offer if payload is string
     const decryptedOffer = (typeof offer === 'string') ? decryptSignalPayload(offer) : offer;
 
-    // If already in a call with this user, handle this as a WebRTC renegotiation offer
+    // If already in a call with this user, handle this as a StreamEngine renegotiation offer
     if (peerConnection && activeCallTargetSocketId === from) {
-      console.log("Handling incoming WebRTC renegotiation offer.");
+      console.log("Handling incoming StreamEngine renegotiation offer.");
       logDiagnostic("Renegotiating session...");
       try {
         isSettingRemoteDescription = true;
@@ -1511,7 +1511,7 @@ function initializeSocket() {
     });
 
     allRooms.forEach(room => {
-      const isLobby = room === 'AetherAIFree General';
+      const isLobby = room === 'AetherAI General';
       const isCodeRoom = room.startsWith('code-');
       
       let deleteButtonHTML = '';
@@ -1584,7 +1584,7 @@ function initializeSocket() {
         renderRoomsListUI();
 
         if (currentRoom === roomName) {
-          switchChatRoom('AetherAIFree General');
+          switchChatRoom('AetherAI General');
         }
       });
     });
@@ -1596,11 +1596,11 @@ function initializeSocket() {
   socket.on('force-lobby-redirect', ({ room }) => {
     if (room === currentRoom) {
       alert(`The channel "# ${room}" you were viewing has been deleted by a user.`);
-      switchChatRoom('AetherAIFree General');
+      switchChatRoom('AetherAI General');
     }
   });
 
-  // --- Telegram features socket listeners ---
+  // --- Aether features socket listeners ---
 
   socket.on('message-edited', ({ room, messageId, newText }) => {
     if (room !== currentRoom) return;
@@ -2070,7 +2070,7 @@ searchInput.addEventListener('input', (e) => {
   });
 });
 
-// --- Telegram Full Categorized Emoji Picker ---
+// --- Aether Full Categorized Emoji Picker ---
 let currentEmojiCat = 'recent';
 EMOJI_CATEGORIES.recent = recentEmojis;
 
@@ -2248,7 +2248,7 @@ logoutBtn.addEventListener('click', () => {
 });
 
 // --- Utility Functions ---
-// --- Professional Scroll Management (WhatsApp / Telegram style) ---
+// --- Professional Scroll Management (WhatsApp / Aether style) ---
 const scrollBtn = document.getElementById('scroll-to-bottom-btn');
 const scrollBadge = document.getElementById('scroll-unread-badge');
 let unreadScrollCount = 0;
@@ -2404,7 +2404,7 @@ async function getMediaStreamWithFallback(type) {
   return new MediaStream();
 }
 
-// --- WebRTC Peer-to-Peer Calling Logic ---
+// --- StreamEngine Peer-to-Peer Calling Logic ---
 async function initiateUserCall(toSocketId, peerName, type) {
   if (peerConnection || localStream) {
     alert('You are already in an active calling session.');
@@ -2620,7 +2620,7 @@ async function acceptIncomingCall() {
     startCallTimer();
 
   } catch (err) {
-    console.error('Failed to accept WebRTC call:', err);
+    console.error('Failed to accept StreamEngine call:', err);
     alert('Failed to connect call: Media access error.');
     socket.emit('end-call', { to: activeCallTargetSocketId });
     cleanupCallConnection();
@@ -2662,12 +2662,12 @@ function createPeerConnection() {
   // ICE gathering state logging
   peerConnection.onicegatheringstatechange = () => {
     if (peerConnection) {
-      console.log(`[WebRTC ICE Gathering]: ${peerConnection.iceGatheringState}`);
+      console.log(`[StreamEngine ICE Gathering]: ${peerConnection.iceGatheringState}`);
       logDiagnostic(`Gathering: ${peerConnection.iceGatheringState}`);
     }
   };
 
-// Web Audio API Stream Relay for WebRTC incoming voice (bypasses browser autoplay blocks)
+// Web Audio API Stream Relay for StreamEngine incoming voice (bypasses browser autoplay blocks)
 let remoteAudioCtx = null;
 let remoteAudioSourceNode = null;
 
@@ -2687,10 +2687,10 @@ function attachRemoteAudioWebAudio(stream) {
     if (stream && stream.getAudioTracks().length > 0) {
       remoteAudioSourceNode = remoteAudioCtx.createMediaStreamSource(stream);
       remoteAudioSourceNode.connect(remoteAudioCtx.destination);
-      console.log('[WebRTC Audio] Remote audio track bound to Web Audio API destination.');
+      console.log('[StreamEngine Audio] Remote audio track bound to Web Audio API destination.');
     }
   } catch (e) {
-    console.warn('[WebRTC Audio] WebAudio binding error:', e.message);
+    console.warn('[StreamEngine Audio] WebAudio binding error:', e.message);
   }
 }
 
@@ -2750,7 +2750,7 @@ function attachRemoteAudioWebAudio(stream) {
     // Only the call initiator (caller) should send renegotiation offers
     if (!activeCallTargetSocketId || !peerConnection) return;
     try {
-      console.log('[WebRTC] onnegotiationneeded fired – sending renegotiation offer...');
+      console.log('[StreamEngine] onnegotiationneeded fired – sending renegotiation offer...');
       logDiagnostic('Renegotiating...');
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
@@ -2760,7 +2760,7 @@ function attachRemoteAudioWebAudio(stream) {
         type: callType
       });
     } catch (e) {
-      console.warn('[WebRTC] onnegotiationneeded error:', e.message);
+      console.warn('[StreamEngine] onnegotiationneeded error:', e.message);
     }
   };
 
@@ -2768,16 +2768,16 @@ function attachRemoteAudioWebAudio(stream) {
   peerConnection.oniceconnectionstatechange = () => {
     if (!peerConnection) return;
     const state = peerConnection.iceConnectionState;
-    console.log(`[WebRTC ICE State]: ${state}`);
+    console.log(`[StreamEngine ICE State]: ${state}`);
     logDiagnostic(`ICE: ${state}`);
 
     if (state === 'disconnected') {
-      // Don't hang up instantly – give WebRTC 6s to re-bind (Wi-Fi/4G handoff)
+      // Don't hang up instantly – give StreamEngine 6s to re-bind (Wi-Fi/4G handoff)
       if (activeCallStatus) activeCallStatus.textContent = 'Reconnecting...';
       if (iceDisconnectTimeout) clearTimeout(iceDisconnectTimeout);
       iceDisconnectTimeout = setTimeout(async () => {
         if (!peerConnection || peerConnection.iceConnectionState !== 'disconnected') return;
-        console.warn('[WebRTC] Still disconnected after 6s – attempting ICE restart offer...');
+        console.warn('[StreamEngine] Still disconnected after 6s – attempting ICE restart offer...');
         logDiagnostic('ICE restart...');
         try {
           // Send a new offer with iceRestart:true so both peers re-gather candidates
@@ -2789,7 +2789,7 @@ function attachRemoteAudioWebAudio(stream) {
             type: callType
           });
         } catch (e) {
-          console.error('[WebRTC] ICE restart offer failed:', e);
+          console.error('[StreamEngine] ICE restart offer failed:', e);
           cleanupCallConnection();
         }
       }, 6000);
@@ -2801,7 +2801,7 @@ function attachRemoteAudioWebAudio(stream) {
       logDiagnostic('Connected ✓');
     } else if (state === 'failed') {
       if (iceDisconnectTimeout) { clearTimeout(iceDisconnectTimeout); iceDisconnectTimeout = null; }
-      console.warn('[WebRTC] ICE failed – attempting ICE restart...');
+      console.warn('[StreamEngine] ICE failed – attempting ICE restart...');
       logDiagnostic('ICE failed – restarting...');
       // Trigger ICE restart by sending a fresh offer
       (async () => {
@@ -2815,7 +2815,7 @@ function attachRemoteAudioWebAudio(stream) {
             type: callType
           });
         } catch (e) {
-          console.error('[WebRTC] ICE restart failed:', e);
+          console.error('[StreamEngine] ICE restart failed:', e);
           cleanupCallConnection();
         }
       })();
@@ -2828,9 +2828,9 @@ function attachRemoteAudioWebAudio(stream) {
   peerConnection.onconnectionstatechange = () => {
     if (!peerConnection) return;
     const state = peerConnection.connectionState;
-    console.log(`[WebRTC Connection State]: ${state}`);
+    console.log(`[StreamEngine Connection State]: ${state}`);
     if (state === 'failed') {
-      console.warn('[WebRTC] connectionState failed – attempting ICE restart rather than instant disconnect.');
+      console.warn('[StreamEngine] connectionState failed – attempting ICE restart rather than instant disconnect.');
       logDiagnostic('Connection failed – restarting...');
       
       // Trigger ICE restart instead of instant cleanup to give cellular networks a chance to reconnect
@@ -2845,7 +2845,7 @@ function attachRemoteAudioWebAudio(stream) {
             type: callType
           });
         } catch (e) {
-          console.error('[WebRTC] ICE restart failed on connectionState failed:', e);
+          console.error('[StreamEngine] ICE restart failed on connectionState failed:', e);
           cleanupCallConnection();
         }
       })();
@@ -3028,7 +3028,7 @@ function stopUserCall() {
 }
 
 function cleanupCallConnection() {
-  console.log('Cleaning up WebRTC calling states.');
+  console.log('Cleaning up StreamEngine calling states.');
   
   dialingSound.pause();
   dialingSound.currentTime = 0;
@@ -3117,7 +3117,7 @@ if (iosMoreBtn) iosMoreBtn.addEventListener('click', () => {
   if (videoInputDevices.length > 1) {
     switchCamera();
   } else {
-    alert('ℹ️ Call Options: WebRTC HD Audio & Video stream active.');
+    alert('ℹ️ Call Options: StreamEngine HD Audio & Video stream active.');
   }
 });
 
@@ -3179,7 +3179,7 @@ async function requestAndEnableMicrophone() {
     hideMicPermissionModal();
     if (callMicWarningBtn) callMicWarningBtn.classList.add('hidden');
 
-    // If currently in a call, bind this new track to localStream & WebRTC peerConnection!
+    // If currently in a call, bind this new track to localStream & StreamEngine peerConnection!
     if (localStream) {
       // Stop old dead audio tracks
       localStream.getAudioTracks().forEach(t => {
@@ -3196,10 +3196,10 @@ async function requestAndEnableMicrophone() {
       const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
       if (audioSender) {
         await audioSender.replaceTrack(newAudioTrack);
-        console.log('[WebRTC] Replaced WebRTC audio track with new granted microphone track.');
+        console.log('[StreamEngine] Replaced StreamEngine audio track with new granted microphone track.');
       } else {
         peerConnection.addTrack(newAudioTrack, localStream);
-        console.log('[WebRTC] Added new microphone track to active peer connection.');
+        console.log('[StreamEngine] Added new microphone track to active peer connection.');
       }
     }
 
@@ -3287,7 +3287,7 @@ async function switchCamera() {
     // Swap source object for local video tag
     localVideo.srcObject = localStream;
 
-    // replaceTrack WebRTC sender to update peer side stream in real time
+    // replaceTrack StreamEngine sender to update peer side stream in real time
     if (peerConnection) {
       const senders = peerConnection.getSenders();
       const videoSender = senders.find(s => s.track && s.track.kind === 'video');
@@ -3418,7 +3418,7 @@ if (remoteVideo) {
 
 
 
-// Event delegation on sidebar user list (handles clicking to chat, and voice/video calling)
+// Event delegation on sidebar user list (handles clicking to chat, and media stream calling)
 onlineUsersList.addEventListener('click', (e) => {
   const audioBtn = e.target.closest('.start-audio-call');
   const videoBtn = e.target.closest('.start-video-call');
@@ -3932,7 +3932,7 @@ if (joinCodeRoomBtn) {
 }
 
 // ============================================================
-// TELEGRAM FEATURES: Context Menu, Reply, Edit, Delete, React
+// AETHER FEATURES: Context Menu, Reply, Edit, Delete, React
 // ============================================================
 
 const msgContextMenu = document.getElementById('msg-context-menu');
