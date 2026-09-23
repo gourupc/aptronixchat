@@ -1205,8 +1205,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('end-call', ({ to }) => {
-    io.to(to).emit('call-ended', {
-      from: socket.id
+    io.to(to).emit('call-ended', { from: socket.id });
+  });
+
+  // Merge Call – signal a third party to join a conference call
+  socket.on('merge-call', ({ to, callerName, type }) => {
+    io.to(to).emit('merge-call-invite', {
+      from: socket.id,
+      callerName: callerName || 'Unknown',
+      type: type || 'audio'
     });
   });
 

@@ -3039,21 +3039,640 @@ body, html {
 /* ==========================================================================
    iOS NATIVE ACTIVE CALL UI & KEYPAD DIALPAD STYLES
    ========================================================================== */
+/* ============================================================
+   WHATSAPP-STYLE ACTIVE CALL SCREEN
+   ============================================================ */
 .ios-call-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 36px);
+  box-sizing: border-box;
+  z-index: 15;
+  /* Deep dark teal-green gradient – WhatsApp call feel */
+  background: linear-gradient(160deg, #0b3d2e 0%, #07261d 35%, #051a14 70%, #020c09 100%);
+  overflow: hidden;
+}
+
+/* Decorative bokeh blobs behind the avatar */
+.ios-call-container::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,200,100,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---------- TOP SECTION: caller info ---------- */
+.wacall-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.wacall-encryption-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+
+.wacall-timer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.wacall-timer-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #25d366;
+  box-shadow: 0 0 8px #25d366;
+  animation: waDotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes waDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.wacall-name {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.wacall-status {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.55);
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.wacall-diag {
+  font-size: 0.7rem;
+  color: #ff9500;
+  font-family: monospace;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+/* ---------- CENTER: Avatar + Pulse Rings ---------- */
+.wacall-avatar-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  position: relative;
+  z-index: 2;
+  min-height: 180px;
+}
+
+.wacall-rings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wacall-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(37, 211, 102, 0.25);
+  animation: waRingExpand 2.6s ease-out infinite;
+}
+
+.wacall-ring-1 { width: 120px; height: 120px; animation-delay: 0s; }
+.wacall-ring-2 { width: 160px; height: 160px; animation-delay: 0.55s; border-color: rgba(37,211,102,0.15); }
+.wacall-ring-3 { width: 205px; height: 205px; animation-delay: 1.1s; border-color: rgba(37,211,102,0.08); }
+
+@keyframes waRingExpand {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  60%  { opacity: 0.4; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+.wacall-avatar-circle {
+  position: relative;
+  z-index: 3;
+  width: 96px !important;
+  height: 96px !important;
+  font-size: 2rem !important;
+  border-radius: 50% !important;
+  border: 3px solid rgba(255,255,255,0.18) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 0 6px rgba(37,211,102,0.12) !important;
+  animation: waAvatarBreath 3s ease-in-out infinite;
+}
+
+@keyframes waAvatarBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+/* ---------- BOTTOM: Controls Card ---------- */
+.wacall-controls-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(15, 20, 18, 0.75);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 28px;
+  padding: 22px 20px 18px;
+  box-shadow: 0 -2px 30px rgba(0,0,0,0.35), 0 20px 40px rgba(0,0,0,0.4);
+  position: relative;
+  z-index: 2;
+}
+
+/* 3 columns × 2 rows (+ 1 centered keypad at bottom) */
+.wacall-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  row-gap: 18px;
+  column-gap: 10px;
+  align-items: start;
+}
+
+.wacall-keypad-item {
+  grid-column: 2; /* center the keypad in 3-col grid */
+}
+
+.wacall-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.wacall-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.13);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wacall-btn:hover {
+  background: rgba(255,255,255,0.22);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.wacall-btn:active {
+  transform: scale(0.89);
+}
+
+/* Active state: white background, dark icon (muted / speaker on) */
+.wacall-btn.active-on,
+.wacall-btn.muted {
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: 0 6px 18px rgba(255,255,255,0.25) !important;
+}
+
+/* End Call – bright red */
+.wacall-btn-end {
+  background: #e8173b !important;
+  color: #ffffff !important;
+  width: 68px !important;
+  height: 68px !important;
+  box-shadow: 0 6px 20px rgba(232,23,59,0.45) !important;
+}
+
+.wacall-btn-end:hover {
+  background: #ff2040 !important;
+  box-shadow: 0 8px 24px rgba(232,23,59,0.6) !important;
+}
+
+/* Merge button – accent green tint when active */
+.wacall-btn.merge-active {
+  background: rgba(37,211,102,0.25) !important;
+  color: #25d366 !important;
+  border: 1.5px solid rgba(37,211,102,0.4) !important;
+}
+
+.wacall-btn-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.85);
+  text-align: center;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+/* ============================================================
+   LEGACY CLASS ALIASES (so old selectors still work in app.js)
+   ============================================================ */
+.ios-call-header   { display: none; } /* replaced by wacall-top */
+.ios-call-timer-wrapper { display: none; }
+.ios-caller-name   { display: none; }
+.ios-call-status   { display: none; }
+.ios-call-action-grid { display: none; }
+.ios-btn-circle    { display: none; }
+.ios-btn-end       { display: none; }
+.ios-grid-item     { display: none; }
+.ios-diagnostic-log { display: none; }
+.ios-timer-icon    { display: none; }
+.audio-call-placeholder { display: none; } /* replaced by wacall-avatar-area / id="audio-call-placeholder" */
+/* Re-enable the element we DO still use (id=audio-call-placeholder) */
+#audio-call-placeholder { display: flex !important; }
+
+/* ============================================================
+   KEYPAD OVERLAY (unchanged design – still works)
+   ============================================================ */
+.ios-keypad-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.ios-keypad-card {
+  background: rgba(18, 24, 22, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 24px;
+  width: 90%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ios-keypad-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.keypad-display {
+  font-family: monospace;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 3px;
+  min-height: 40px;
+  flex: 1;
+  text-align: center;
+  word-break: break-all;
+}
+
+.close-keypad-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.close-keypad-btn:hover { color: #ffffff; }
+
+.ios-dialpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 20px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.dial-key {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+  outline: none;
+}
+
+.dial-key:hover  { background: rgba(255, 255, 255, 0.25); }
+.dial-key:active { background: rgba(255, 255, 255, 0.4); transform: scale(0.92); }
+
+.key-num {
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.key-sub {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.btn-hide-keypad {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 14px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-hide-keypad:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* ============================================================
+   MERGE CALL PANEL
+   ============================================================ */
+.merge-call-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.80);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 3100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.merge-call-card {
+  background: rgba(15, 22, 18, 0.97);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 24px 24px 18px 18px;
+  padding: 20px 20px 14px;
+  width: 94%;
+  max-width: 400px;
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.5);
+  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.merge-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.merge-icon {
+  font-size: 1.4rem;
+}
+
+.merge-card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+}
+
+.merge-card-desc {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.5);
+  margin: 0 0 14px 0;
+  line-height: 1.4;
+}
+
+.merge-contacts-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.merge-empty-state {
+  text-align: center;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.85rem;
+  padding: 16px 0;
+}
+
+.merge-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.merge-contact-item:hover {
+  background: rgba(37,211,102,0.12);
+  border-color: rgba(37,211,102,0.25);
+}
+
+.merge-contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.merge-contact-name {
+  flex: 1;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.btn-add-to-call {
+  background: #25d366;
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn-add-to-call:hover   { background: #20ba58; }
+.btn-add-to-call:active  { transform: scale(0.94); }
+.btn-add-to-call:disabled { background: rgba(255,255,255,0.15); cursor: default; }
+
+.merge-card-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-cancel-merge {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 16px;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 32px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-cancel-merge:hover { background: rgba(255,255,255,0.18); }
+
+/* ============================================================
+   MIC PERMISSION MODAL (unchanged)
+   ============================================================ */
+.mic-perm-card {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  color: var(--text-main);
+  animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mic-perm-header {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(30px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom));
-  box-sizing: border-box;
-  background: radial-gradient(circle at center top, #2c2c2e 0%, #1c1c1e 40%, #0d0d0e 100%);
-  z-index: 15;
+  margin-bottom: 12px;
 }
+
+.mic-perm-icon-wrapper {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.mic-perm-card h3 {
+  margin: 12px 0 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mic-perm-card p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.mic-perm-instructions {
+  margin-top: 14px;
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.mic-perm-instructions ol {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+.ios-mic-warning-btn {
+  background: rgba(255, 59, 48, 0.25);
+  border: 1px solid rgba(255, 59, 48, 0.5);
+  color: #ff453a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s, background-color 0.2s;
+  animation: pulseFlash 1.5s infinite alternate;
+}
+
+.ios-mic-warning-btn:hover {
+  background: rgba(255, 59, 48, 0.4);
+  transform: scale(1.03);
+}
+
 
 .ios-call-header {
   display: flex;

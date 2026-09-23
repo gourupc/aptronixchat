@@ -1147,6 +1147,25 @@ function initializeSocket() {
     cleanupCallConnection();
   });
 
+  // Merge Call Invite – show incoming call notification for conference merge
+  socket.on('merge-call-invite', ({ from, callerName, type }) => {
+    console.log(`[Merge] Conference invite from ${callerName} (${from})`);
+    activeCallTargetSocketId = from;
+    callType = type;
+
+    if (incomingCallerName) incomingCallerName.textContent = callerName;
+    if (incomingCallerAvatar) {
+      incomingCallerAvatar.textContent = callerName.substring(0, 2).toUpperCase();
+      incomingCallerAvatar.style.backgroundColor = getAvatarColor(callerName);
+    }
+    if (incomingCallTypeLabel) {
+      incomingCallTypeLabel.textContent = `🔀 Conference Merge – ${type === 'video' ? 'Video' : 'Voice'} Call`;
+    }
+    if (incomingCallOverlay) incomingCallOverlay.classList.remove('hidden');
+    ringtoneSound.currentTime = 0;
+    ringtoneSound.play().catch(() => {});
+  });
+
   // Load message logs
   socket.on('chat-history', (history) => {
     messagesContainer.innerHTML = ''; // Clear previous messages
@@ -2691,20 +2710,25 @@ async function processQueuedIceCandidates() {
 
 
 
-// --- iOS Call Screen UI Selectors & DTMF Audio Synthesizer ---
-const iosAudioBtn = document.getElementById('ios-audio-btn');
-const iosFacetimeBtn = document.getElementById('ios-facetime-btn');
+// --- Call Screen UI Selectors & DTMF Audio Synthesizer ---
+const iosAudioBtn      = document.getElementById('ios-audio-btn');
+const iosFacetimeBtn   = document.getElementById('ios-facetime-btn');
 const iosFacetimeLabel = document.getElementById('ios-facetime-label');
-const iosMuteBtn = document.getElementById('ios-mute-btn');
-const iosMuteIcon = document.getElementById('ios-mute-icon');
-const iosMuteLabel = document.getElementById('ios-mute-label');
-const iosMoreBtn = document.getElementById('ios-more-btn');
-const iosEndBtn = document.getElementById('ios-end-btn');
-const iosKeypadBtn = document.getElementById('ios-keypad-btn');
+const iosMuteBtn       = document.getElementById('ios-mute-btn');
+const iosMuteIcon      = document.getElementById('ios-mute-icon');
+const iosMuteLabel     = document.getElementById('ios-mute-label');
+const iosMoreBtn       = document.getElementById('ios-more-btn');
+const iosMergeBtn      = document.getElementById('ios-merge-btn');
+const iosEndBtn        = document.getElementById('ios-end-btn');
+const iosKeypadBtn     = document.getElementById('ios-keypad-btn');
 const iosKeypadOverlay = document.getElementById('ios-keypad-overlay');
-const closeKeypadBtn = document.getElementById('close-keypad-btn');
-const hideKeypadBtn = document.getElementById('hide-keypad-btn');
-const keypadDisplay = document.getElementById('keypad-display');
+const closeKeypadBtn   = document.getElementById('close-keypad-btn');
+const hideKeypadBtn    = document.getElementById('hide-keypad-btn');
+const keypadDisplay    = document.getElementById('keypad-display');
+const mergeCallPanel   = document.getElementById('merge-call-panel');
+const mergeContactsList = document.getElementById('merge-contacts-list');
+const closeMergePanelBtn = document.getElementById('close-merge-panel-btn');
+const cancelMergeBtn   = document.getElementById('cancel-merge-btn');
 
 // Standard Dual-Tone Multi-Frequency (DTMF) Audio Generator
 const DTMF_FREQS = {
@@ -2784,7 +2808,11 @@ function toggleLocalMicrophone() {
       isMicMuted = !isMicMuted;
       audioTrack.enabled = !isMicMuted;
       
-      if (iosMuteBtn) iosMuteBtn.classList.toggle('muted', isMicMuted);
+      // Use wacall-btn class for new design (fallback to old class names)
+      if (iosMuteBtn) {
+        iosMuteBtn.classList.toggle('muted', isMicMuted);
+        iosMuteBtn.classList.toggle('active-on', isMicMuted);
+      }
       if (iosMuteLabel) iosMuteLabel.textContent = isMicMuted ? 'Unmute' : 'Mute';
       if (toggleMicBtn) toggleMicBtn.classList.toggle('muted', isMicMuted);
       
@@ -2870,11 +2898,13 @@ function cleanupCallConnection() {
   isMicMuted = false;
   isVideoPaused = false;
 
-  if (iosMuteBtn) iosMuteBtn.classList.remove('muted');
+  if (iosMuteBtn) { iosMuteBtn.classList.remove('muted'); iosMuteBtn.classList.remove('active-on'); }
   if (iosMuteLabel) iosMuteLabel.textContent = 'Mute';
   if (iosFacetimeBtn) iosFacetimeBtn.classList.remove('active-on');
   if (iosAudioBtn) iosAudioBtn.classList.remove('active-on');
+  if (iosMergeBtn) { iosMergeBtn.classList.remove('merge-active'); iosMergeBtn.classList.remove('active-on'); }
   if (iosKeypadOverlay) iosKeypadOverlay.classList.add('hidden');
+  if (mergeCallPanel) mergeCallPanel.classList.add('hidden');
 
   incomingCallOverlay.classList.add('hidden');
   activeCallOverlay.classList.add('hidden');
@@ -2929,6 +2959,84 @@ if (iosMoreBtn) iosMoreBtn.addEventListener('click', () => {
     alert('ℹ️ Call Options: WebRTC HD Audio & Video stream active.');
   }
 });
+
+// --- Merge Call Button ---
+if (iosMergeBtn) iosMergeBtn.addEventListener('click', openMergeCallPanel);
+if (closeMergePanelBtn) closeMergePanelBtn.addEventListener('click', closeMergePanel);
+if (cancelMergeBtn) cancelMergeBtn.addEventListener('click', closeMergePanel);
+
+function openMergeCallPanel() {
+  if (!activeCallTargetSocketId) return; // Not in a call
+  if (!mergeCallPanel || !mergeContactsList) return;
+
+  // Populate with online users (excluding the current peer and self)
+  mergeContactsList.innerHTML = '';
+  const onlineItems = document.querySelectorAll('#user-list .user-item');
+  let addedCount = 0;
+
+  onlineItems.forEach(item => {
+    const sid = item.dataset.socketId;
+    const uname = item.dataset.username || item.querySelector('.user-name')?.textContent || 'User';
+    if (!sid || sid === activeCallTargetSocketId) return; // skip current peer
+
+    addedCount++;
+    const row = document.createElement('div');
+    row.className = 'merge-contact-item';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'merge-contact-avatar';
+    avatarDiv.style.backgroundColor = getAvatarColor(uname);
+    avatarDiv.textContent = uname.substring(0, 2).toUpperCase();
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'merge-contact-name';
+    nameSpan.textContent = uname;
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn-add-to-call';
+    addBtn.textContent = 'Add';
+    addBtn.addEventListener('click', () => {
+      addBtn.disabled = true;
+      addBtn.textContent = 'Calling…';
+      mergeUserIntoCall(sid, uname);
+      setTimeout(closeMergePanel, 600);
+    });
+
+    row.appendChild(avatarDiv);
+    row.appendChild(nameSpan);
+    row.appendChild(addBtn);
+    mergeContactsList.appendChild(row);
+  });
+
+  if (addedCount === 0) {
+    mergeContactsList.innerHTML = '<p class="merge-empty-state">No other users online to add.</p>';
+  }
+
+  mergeCallPanel.classList.remove('hidden');
+  if (iosMergeBtn) iosMergeBtn.classList.add('merge-active');
+}
+
+function closeMergePanel() {
+  if (mergeCallPanel) mergeCallPanel.classList.add('hidden');
+  if (iosMergeBtn) iosMergeBtn.classList.remove('merge-active');
+}
+
+function mergeUserIntoCall(targetSocketId, targetName) {
+  if (!socket || !localStream) {
+    alert('Cannot merge: no active call stream.');
+    return;
+  }
+  // Signal the server to invite the target user into the conference
+  socket.emit('merge-call', {
+    to: targetSocketId,
+    from: activeCallTargetSocketId,
+    callerName: currentUser,
+    type: callType || 'audio'
+  });
+  if (activeCallStatus) activeCallStatus.textContent = `Merging ${targetName}…`;
+  console.log(`[Merge] Requested merge with ${targetName} (${targetSocketId})`);
+}
 
 if (iosKeypadBtn) iosKeypadBtn.addEventListener('click', () => {
   if (iosKeypadOverlay) {

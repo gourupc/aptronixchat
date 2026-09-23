@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -459,106 +459,124 @@
     </div>
   </div>
 
-  <!-- 4. ACTIVE CALL OVERLAY (iOS Native Phone Screen) -->
+  <!-- 4. ACTIVE CALL OVERLAY (WhatsApp-style Phone Screen) -->
   <div id="active-call-overlay" class="call-modal-overlay active-call-screen hidden">
     <!-- Remote Audio (forces iOS Safari & Browsers to route WebRTC audio to speakers/Bluetooth) -->
     <audio id="remote-audio" autoplay playsinline style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0.001; pointer-events: none; z-index: 1;"></audio>
 
-    <!-- Video Streams Area -->
+    <!-- Video Streams Area (only visible during video calls) -->
     <div class="video-grid-container" id="video-streams-container">
-      <!-- Remote Video (takes up full background) -->
       <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
-      
-      <!-- Local Video (small picture-in-picture floating box) -->
       <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>
     </div>
 
-    <!-- iOS Native Call Screen Container -->
+    <!-- Main Call Screen UI -->
     <div id="ios-call-container" class="ios-call-container">
-      <!-- Top Section: Call Header & Live Timer -->
-      <div class="ios-call-header">
-        <div class="ios-call-timer-wrapper">
-          <span class="ios-timer-icon">⏹</span>
+
+      <!-- TOP: Caller Info -->
+      <div class="wacall-top">
+        <div class="wacall-encryption-badge">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          End-to-end encrypted
+        </div>
+        <div class="wacall-timer-row">
+          <div class="wacall-timer-dot"></div>
           <span id="call-timer">00:00</span>
         </div>
-        <h1 id="active-call-peer-name" class="ios-caller-name">User</h1>
-        <p id="active-call-status" class="ios-call-status">Voice Call Connected</p>
+        <h1 id="active-call-peer-name" class="wacall-name">User</h1>
+        <p id="active-call-status" class="wacall-status">Calling...</p>
         <button type="button" id="call-mic-warning-btn" class="ios-mic-warning-btn hidden" title="Microphone permission needed">
-          🎙️ Mic Disabled – Tap to Enable Access
+          ðŸŽ™ï¸ Mic Disabled â€“ Tap to Enable Access
         </button>
-        <div id="call-diagnostic-log" class="ios-diagnostic-log">WebRTC Initializing...</div>
+        <div id="call-diagnostic-log" class="wacall-diag hidden"></div>
       </div>
 
-      <!-- Center Avatar (shown during ringer / audio call mode) -->
-      <div id="audio-call-placeholder" class="audio-call-placeholder">
-        <div class="calling-avatar-wrapper">
-          <div class="avatar call-avatar-breathing" id="active-call-avatar">?</div>
-          <div class="pulse-ring ring-1"></div>
-          <div class="pulse-ring ring-2"></div>
-          <div class="pulse-ring ring-3"></div>
+      <!-- CENTER: Avatar with Pulse Rings -->
+      <div id="audio-call-placeholder" class="wacall-avatar-area">
+        <div class="wacall-rings">
+          <div class="wacall-ring wacall-ring-3"></div>
+          <div class="wacall-ring wacall-ring-2"></div>
+          <div class="wacall-ring wacall-ring-1"></div>
+          <div class="avatar wacall-avatar-circle" id="active-call-avatar">?</div>
         </div>
       </div>
 
-      <!-- iOS Native Call Action Grid (2 Rows x 3 Columns) -->
-      <div class="ios-call-action-grid">
-        <!-- 1. Audio -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-audio-btn" class="ios-btn-circle" title="Audio Device Output">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label">Audio</span>
-        </div>
+      <!-- BOTTOM: 2x3 Action Grid in Dark Pill Card -->
+      <div class="wacall-controls-card">
+        <div class="wacall-grid">
 
-        <!-- 2. FaceTime / Video -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-facetime-btn" class="ios-btn-circle" title="FaceTime / Toggle Video">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label" id="ios-facetime-label">FaceTime</span>
-        </div>
+          <!-- Row 1 -->
+          <!-- 1. Mute -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-mute-btn" class="wacall-btn" title="Mute Microphone">
+              <svg id="ios-mute-icon" viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label" id="ios-mute-label">Mute</span>
+          </div>
 
-        <!-- 3. Mute -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-mute-btn" class="ios-btn-circle" title="Mute Microphone">
-            <svg id="ios-mute-icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label" id="ios-mute-label">Mute</span>
-        </div>
+          <!-- 2. Video / FaceTime -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-facetime-btn" class="wacall-btn" title="Toggle Video">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label" id="ios-facetime-label">Video</span>
+          </div>
 
-        <!-- 4. More -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-more-btn" class="ios-btn-circle" title="More Call Options">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label">More</span>
-        </div>
+          <!-- 3. Speaker -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-audio-btn" class="wacall-btn" title="Speaker / Audio Output">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label">Speaker</span>
+          </div>
 
-        <!-- 5. End -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-end-btn" class="ios-btn-circle ios-btn-end" title="End Call">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
-              <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label">End</span>
-        </div>
+          <!-- Row 2 -->
+          <!-- 4. More / Switch Camera -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-more-btn" class="wacall-btn" title="More Options">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label">More</span>
+          </div>
 
-        <!-- 6. Keypad -->
-        <div class="ios-grid-item">
-          <button type="button" id="ios-keypad-btn" class="ios-btn-circle" title="Show Dial Keypad">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-            </svg>
-          </button>
-          <span class="ios-btn-label">Keypad</span>
+          <!-- 5. Merge Call -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-merge-btn" class="wacall-btn" title="Merge / Conference Call">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label">Merge</span>
+          </div>
+
+          <!-- 6. End Call -->
+          <div class="wacall-grid-item">
+            <button type="button" id="ios-end-btn" class="wacall-btn wacall-btn-end" title="End Call">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label">End Call</span>
+          </div>
+
+          <!-- 7. Keypad (full-width bottom row center) -->
+          <div class="wacall-grid-item wacall-keypad-item">
+            <button type="button" id="ios-keypad-btn" class="wacall-btn" title="Show Dial Keypad">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              </svg>
+            </button>
+            <span class="wacall-btn-label">Keypad</span>
+          </div>
+
         </div>
       </div>
     </div>
@@ -570,7 +588,6 @@
           <div id="keypad-display" class="keypad-display"></div>
           <button type="button" id="close-keypad-btn" class="close-keypad-btn" title="Close Keypad">&times;</button>
         </div>
-
         <div class="ios-dialpad-grid">
           <button type="button" class="dial-key" data-key="1"><span class="key-num">1</span></button>
           <button type="button" class="dial-key" data-key="2"><span class="key-num">2</span><span class="key-sub">ABC</span></button>
@@ -585,13 +602,30 @@
           <button type="button" class="dial-key" data-key="0"><span class="key-num">0</span><span class="key-sub">+</span></button>
           <button type="button" class="dial-key" data-key="#"><span class="key-num">#</span></button>
         </div>
-
         <button type="button" id="hide-keypad-btn" class="btn-hide-keypad">Hide Keypad</button>
+      </div>
+    </div>
+
+    <!-- Merge Call Panel -->
+    <div id="merge-call-panel" class="merge-call-panel hidden">
+      <div class="merge-call-card">
+        <div class="merge-card-header">
+          <span class="merge-icon">ðŸ‘¥</span>
+          <h3>Add to Call</h3>
+          <button type="button" id="close-merge-panel-btn" class="close-keypad-btn">&times;</button>
+        </div>
+        <p class="merge-card-desc">Select a contact to merge into this call and start a group conference.</p>
+        <div id="merge-contacts-list" class="merge-contacts-list">
+          <p class="merge-empty-state">No other users online to add.</p>
+        </div>
+        <div class="merge-card-footer">
+          <button type="button" id="cancel-merge-btn" class="btn-cancel-merge">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Audio elements for calling states -->
+  <!-- Audio elementsts for calling states -->
   <audio id="dialing-sound" src="https://assets.mixkit.co/active_storage/sfx/2049/2049-84.wav" loop preload="none"></audio>
   <audio id="ringtone-sound" src="https://assets.mixkit.co/active_storage/sfx/1359/1359-84.wav" loop preload="none"></audio>
 
