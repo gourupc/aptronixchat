@@ -4329,3 +4329,20 @@ body, html {
   background: rgba(255, 255, 255, 0.1);
   margin: 4px 8px;
 }
+
+/* Re-enable pointer-events for all video call action elements */
+.video-call-active,
+.video-call-active .vcall-bottom-bar,
+.video-call-active .vcall-topbar,
+.video-call-active .vcall-bar-btn,
+.video-call-active .vcall-topbar-icon-btn,
+.video-call-active .pip-wrapper,
+.video-call-active .pip-action-btn,
+.video-call-active .video-more-menu,
+.vcall-bottom-bar,
+.vcall-topbar,
+.vcall-bar-btn,
+.vcall-topbar-icon-btn,
+.video-more-menu {
+  pointer-events: auto !important;
+}
