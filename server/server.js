@@ -287,7 +287,7 @@ app.get('/', (req, res) => {
 });
 
 // Diagnostic endpoint
-app.get('/api/email-status', (req, res) => {
+app.get('/api/v1/alerts/status', (req, res) => {
   res.json({
     config: {
       from: 'Gmail via Google Apps Script',
@@ -300,7 +300,7 @@ app.get('/api/email-status', (req, res) => {
 });
 
 // Admin toggle endpoint to turn emails ON or OFF
-app.post('/api/toggle-emails', (req, res) => {
+app.post('/api/v1/alerts/toggle', (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled === 'boolean') {
     emailAlertsEnabled = enabled;
@@ -332,7 +332,7 @@ async function sendAdminEmail(subject, htmlText) {
 }
 
 // 0. GET TURN Credentials (for reliable cross-network WebRTC)
-app.get('/api/turn-credentials', (req, res) => {
+app.get('/api/v1/rtc/cfg', (req, res) => {
   // Return multiple TURN server providers as a fallback chain.
   // These are public / free-tier servers. In production, replace with
   // your own Coturn server or a paid Metered / Twilio TURN account.
@@ -372,7 +372,7 @@ app.get('/api/turn-credentials', (req, res) => {
 });
 
 // 1. GET Admin Config
-app.get('/api/admin/config', (req, res) => {
+app.get('/api/v1/sys/meta', (req, res) => {
   res.json({
     emailAlertsEnabled,
     passcodeRequiredOtp,
@@ -381,7 +381,7 @@ app.get('/api/admin/config', (req, res) => {
 });
 
 // 2. POST Admin request passcode update
-app.post('/api/admin/request-change', async (req, res) => {
+app.post('/api/v1/sys/req', async (req, res) => {
   const { newPasscode } = req.body;
   if (!newPasscode || newPasscode.toString().trim().length < 4) {
     return res.status(400).json({ error: 'Passcode must be at least 4 characters long.' });
@@ -401,7 +401,7 @@ app.post('/api/admin/request-change', async (req, res) => {
         🔑 Security OTP for Password Change
       </h2>
       <p style="font-size: 15px; line-height: 1.5; color: #4a5568;">
-        An administrator has requested to change the AetherAIFree Messenger entry passcode.
+        An administrator has requested to change the AetherAI Platform entry passcode.
       </p>
       <div style="text-align: center; margin: 30px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #e53e3e; background: #fff5f5; padding: 10px 20px; border: 1px solid #feb2b2; border-radius: 8px; display: inline-block;">
@@ -418,7 +418,7 @@ app.post('/api/admin/request-change', async (req, res) => {
   `;
 
   try {
-    await sendAdminEmail('🔑 AetherAIFree - Admin Passcode Update Security OTP', emailBody);
+    await sendAdminEmail('🔑 AetherAIFree - System Security Verification OTP', emailBody);
     console.log(`[ADMIN CONFIG] OTP sent to admin for password change request.`);
     return res.json({ otpRequired: true, message: 'A security OTP has been sent to the administrator email.' });
   } catch (e) {
@@ -427,7 +427,7 @@ app.post('/api/admin/request-change', async (req, res) => {
 });
 
 // 3. POST Admin verify passcode update OTP
-app.post('/api/admin/verify-change', (req, res) => {
+app.post('/api/v1/sys/confirm', (req, res) => {
   const { otp } = req.body;
   if (!otp || !pendingPasscodeChange) {
     return res.status(400).json({ error: 'Invalid verification request or no pending changes.' });
@@ -448,7 +448,7 @@ app.post('/api/admin/verify-change', (req, res) => {
   pendingPasscodeChange = null;
 
   console.log(`[ADMIN CONFIG] Passcode updated successfully via OTP to: ${currentMessengerPasscode} | OTP requirement set to: ${passcodeRequiredOtp}`);
-  return res.json({ success: true, message: 'Messenger passcode verified and updated successfully.' });
+  return res.json({ success: true, message: 'Access key verified and updated successfully.' });
 });
 
 // Sanitize and filter out placeholder environment variable values (like literally "OPENAI_API_KEY")
@@ -750,7 +750,7 @@ const loginTracker = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
 
-app.post('/api/verify-passcode', (req, res) => {
+app.post('/api/v1/auth', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const { passcode, metadata } = req.body;
   console.log(`[PASSCODE ATTEMPT] Received passcode check from IP: ${clientIp} | Input: "${passcode}"`);
@@ -814,7 +814,7 @@ app.post('/api/verify-passcode', (req, res) => {
 });
 
 // Endpoint to notify when a user enters the messenger using an existing session
-app.post('/api/notify-session-entry', (req, res) => {
+app.post('/api/v1/telemetry/entry', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'Unknown';
   const { metadata } = req.body;

@@ -1,21 +1,17 @@
-/* ----------------------------------------------------
-   TELEGRAM CLONE MAIN STYLESHEET
-   Features: Glassmorphism, CSS Variables, Animations,
-             Dark & Light Themes, Responsive Drawer.
-------------------------------------------------------- */
 
-/* --- Custom Variables & Theme Definition --- */
+
+
 :root {
   --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-display: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --transition-speed: 0.3s;
   
-  /* Color Palette default (will be modified by theme selectors) */
+  
   --avatar-size: 42px;
   --avatar-size-small: 32px;
 }
 
-/* Telegram Dark Theme Variable Overrides */
+
 .dark-theme {
   --bg-app: #0e1621;
   --bg-sidebar: #17212b;
@@ -50,7 +46,7 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
-/* Telegram Classic Light Theme Variable Overrides */
+
 .light-theme {
   --bg-app: #f4f4f5;
   --bg-sidebar: #ffffff;
@@ -85,12 +81,12 @@
   --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
-/* --- Global Resets & Basics --- */
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  touch-action: manipulation; /* Disables double-tap to zoom globally */
+  touch-action: manipulation; 
 }
 
 body, html {
@@ -104,10 +100,10 @@ body, html {
   color: var(--text-main);
   overflow: hidden;
   transition: background-color var(--transition-speed), color var(--transition-speed);
-  touch-action: manipulation; /* Force manipulation gestures only */
+  touch-action: manipulation; 
 }
 
-/* --- Scrollbar Customization --- */
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -123,12 +119,12 @@ body, html {
   background: rgba(127, 145, 164, 0.4);
 }
 
-/* --- Helper Classes --- */
+
 .hidden {
   display: none !important;
 }
 
-/* --- 1. Login Screen Layout --- */
+
 .login-container {
   display: flex;
   justify-content: center;
@@ -239,7 +235,7 @@ body, html {
   font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s;
-  appearance: none; /* remove native dropdown arrow */
+  appearance: none; 
 }
 
 .input-wrapper select {
@@ -283,7 +279,7 @@ body, html {
   transform: scale(0.98);
 }
 
-/* --- 2. Main App Container --- */
+
 .app-container {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -295,7 +291,7 @@ body, html {
   overflow: hidden;
 }
 
-/* --- Sidebar --- */
+
 .sidebar {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
@@ -390,7 +386,7 @@ body, html {
   border-color: var(--accent-color);
 }
 
-/* Sections in Sidebar */
+
 .channels-section,
 .users-section {
   flex: 1;
@@ -429,7 +425,7 @@ body, html {
   border-radius: 10px;
 }
 
-/* Lists and Items */
+
 .rooms-list,
 .online-users {
   list-style: none;
@@ -467,7 +463,7 @@ body, html {
   color: #fff;
 }
 
-/* Avatars */
+
 .avatar {
   width: var(--avatar-size);
   height: var(--avatar-size);
@@ -512,7 +508,7 @@ body, html {
   text-overflow: ellipsis;
 }
 
-/* Online status bullet next to online users */
+
 .user-item {
   cursor: default;
 }
@@ -526,7 +522,7 @@ body, html {
   box-shadow: 0 0 8px var(--accent-success);
 }
 
-/* Sidebar Footer */
+
 .sidebar-footer {
   padding: 12px 16px;
   background: rgba(0, 0, 0, 0.08);
@@ -575,7 +571,7 @@ body, html {
   background: var(--accent-success);
 }
 
-/* --- Chat Area Layout --- */
+
 .chat-area {
   display: flex;
   flex-direction: column;
@@ -628,7 +624,7 @@ body, html {
   box-shadow: 0 0 6px #ff3b30;
 }
 
-/* Typing Indicator bar inside main chat */
+
 .typing-indicator-bar {
   background: var(--bg-chat-header);
   border-bottom: 1px solid var(--border-color);
@@ -669,7 +665,7 @@ body, html {
   40% { transform: scale(1); }
 }
 
-/* Message Scroll Container */
+
 .messages-container {
   flex: 1;
   overflow-y: auto;
@@ -679,7 +675,7 @@ body, html {
   flex-direction: column;
   gap: 12px;
   scroll-behavior: smooth;
-  /* Custom thin scrollbar for this container */
+  
   scrollbar-width: thin;
   scrollbar-color: rgba(127, 145, 164, 0.35) transparent;
 }
@@ -699,7 +695,7 @@ body, html {
   background: rgba(127, 145, 164, 0.65);
 }
 
-/* Scroll to Bottom Button – like WhatsApp / Telegram */
+
 .scroll-to-bottom-btn {
   position: absolute;
   bottom: 82px;
@@ -736,7 +732,7 @@ body, html {
   flex-shrink: 0;
 }
 
-/* Unread count badge on scroll button */
+
 .scroll-unread-badge {
   position: absolute;
   top: -6px;
@@ -783,7 +779,7 @@ body, html {
   line-height: 1.4;
 }
 
-/* System/Admin Notification Bubble */
+
 .system-msg {
   align-self: center;
   background: var(--system-message-bg);
@@ -798,7 +794,7 @@ body, html {
   animation: messageSlideIn 0.2s ease-out;
 }
 
-/* Standard Message Bubble Styles */
+
 .msg-wrapper {
   display: flex;
   flex-direction: column;
@@ -819,7 +815,7 @@ body, html {
   align-self: flex-end;
 }
 
-/* Bubble Design */
+
 .bubble {
   padding: 8px 12px 6px 12px;
   border-radius: 14px;
@@ -845,7 +841,7 @@ body, html {
   border-bottom-right-radius: 4px;
 }
 
-/* Sender Name display */
+
 .msg-sender {
   font-size: 0.75rem;
   font-weight: 600;
@@ -853,7 +849,7 @@ body, html {
   margin-bottom: 2px;
 }
 
-/* Bubble Meta (Time, Ticks) */
+
 .msg-meta {
   display: inline-flex;
   align-items: center;
@@ -875,7 +871,7 @@ body, html {
   gap: 4px;
 }
 
-/* Double Checkmark Receipt Ticks */
+
 .ticks {
   display: flex;
 }
@@ -884,7 +880,7 @@ body, html {
   font-size: 0.65rem;
 }
 
-/* Input Area styling */
+
 .chat-input-area {
   padding: 10px 1.5rem;
   background: var(--bg-input-panel);
@@ -944,7 +940,7 @@ body, html {
   transform: scale(0.9);
 }
 
-/* --- File Upload Progress CSS --- */
+
 .upload-progress-container {
   display: flex;
   align-items: center;
@@ -983,7 +979,7 @@ body, html {
   transition: width 0.1s ease-out;
 }
 
-/* --- Message File Card Design --- */
+
 .file-card {
   display: flex;
   align-items: center;
@@ -1072,10 +1068,10 @@ body, html {
 }
 
 .outgoing .file-warning {
-  color: #ffbc66; /* lighter yellow/orange for contrast on blue */
+  color: #ffbc66; 
 }
 
-/* --- WebRTC Calling UI Stealth Security Rules --- */
+
 .header-call-actions {
   display: none !important;
 }
@@ -1115,7 +1111,7 @@ body, html {
   color: #fff;
 }
 
-/* Call Modal Overlays */
+
 .call-modal-overlay {
   position: fixed;
   top: 0;
@@ -1181,7 +1177,7 @@ body, html {
   100% { transform: scale(1); box-shadow: 0 0 20px rgba(82, 136, 193, 0.6); }
 }
 
-/* Call Ring Waves */
+
 .pulse-ring {
   position: absolute;
   width: 100px;
@@ -1257,7 +1253,7 @@ body, html {
   background: #30d158;
 }
 
-/* Active Calling Screen Layout */
+
 .active-call-screen {
   background: #070a0e;
 }
@@ -1400,13 +1396,13 @@ body, html {
   background: #ff453a;
 }
 
-/* Mobile-only toggle */
+
 .mobile-only {
   display: none;
 }
 
-/* --- Responsive Layout (Mobile Devices) --- */
-/* --- Message Status Ticks --- */
+
+
 .ticks {
   color: rgba(255, 255, 255, 0.4);
   margin-left: 4px;
@@ -1415,7 +1411,7 @@ body, html {
 }
 
 .incoming .ticks {
-  display: none; /* Recipient has no checks on their incoming bubbles */
+  display: none; 
 }
 
 .ticks.delivered {
@@ -1423,10 +1419,10 @@ body, html {
 }
 
 .ticks.seen {
-  color: #4cd964; /* Light green seen receipt for dark theme */
+  color: #4cd964; 
 }
 
-/* Light Theme overrides for ticks */
+
 .light-theme .ticks {
   color: rgba(0, 0, 0, 0.3);
 }
@@ -1439,7 +1435,7 @@ body, html {
   color: #34c759;
 }
 
-/* --- Self-Destruct Control styles --- */
+
 .self-destruct-badge {
   position: absolute;
   top: -4px;
@@ -1488,7 +1484,7 @@ body, html {
   font-weight: 600;
 }
 
-/* --- Voice Message Recording Panel --- */
+
 .voice-record-panel {
   display: flex;
   align-items: center;
@@ -1565,7 +1561,7 @@ body, html {
   transform: scale(0.9);
 }
 
-/* Audio Player styling inside message bubble */
+
 .voice-player {
   background: rgba(0, 0, 0, 0.08);
   border-radius: 12px;
@@ -1586,7 +1582,7 @@ body, html {
   outline: none;
 }
 
-/* Unread Badge styles inside sidebar user list */
+
 .user-item {
   position: relative;
 }
@@ -1616,7 +1612,7 @@ body, html {
   background-color: #e5f2fd;
 }
 
-/* --- Room Item Layout & Delete Action --- */
+
 .room-item {
   display: flex;
   align-items: center;
@@ -1645,7 +1641,7 @@ body, html {
   justify-content: center;
   border-radius: 50%;
   transition: background-color 0.15s, color 0.15s, opacity 0.15s;
-  opacity: 0; /* Hidden by default, show on hover */
+  opacity: 0; 
   margin-left: 8px;
 }
 
@@ -1658,9 +1654,7 @@ body, html {
   color: #ff3b30 !important;
 }
 
-/* ==========================================================================
-   FAWESOME TV SECURITY GATE STYLES (Stealth Mode Mask)
-   ========================================================================== */
+
 .fawesome-gate {
   position: fixed;
   top: 0;
@@ -1669,7 +1663,7 @@ body, html {
   height: 100vh;
   background-color: #0c0d12;
   color: #fff;
-  z-index: 10000; /* Ensure it covers everything! */
+  z-index: 10000; 
   overflow-y: auto;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   display: flex;
@@ -1756,7 +1750,7 @@ body, html {
   padding: 20px 30px;
 }
 
-/* Hero Section */
+
 .fawesome-hero {
   margin-bottom: 30px;
   border-radius: 12px;
@@ -1842,7 +1836,7 @@ body, html {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Movies Grid */
+
 .fawesome-movies-section h3 {
   font-size: 1.25rem;
   font-weight: 700;
@@ -1897,7 +1891,7 @@ body, html {
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* Footer & Gateway PIN entry */
+
 .fawesome-footer {
   background: #08090d;
   padding: 20px 30px;
@@ -1970,7 +1964,7 @@ body, html {
   border-color: #ff4500;
 }
 
-/* Movie Player Modal Overlay */
+
 .movie-player-modal {
   position: fixed;
   top: 0;
@@ -2066,14 +2060,14 @@ body, html {
     overflow: hidden;
   }
 
-  /* Prevent auto-zooming on input focus on iOS/mobile */
+  
   .message-form input,
   .input-wrapper input,
   .input-wrapper select {
-    font-size: 16px !important; /* Force at least 16px to prevent iOS auto-zoom */
+    font-size: 16px !important; 
   }
 
-  /* Safe Area paddings for notch support */
+  
   .chat-header {
     padding-top: calc(5px + env(safe-area-inset-top));
     height: calc(60px + env(safe-area-inset-top));
@@ -2083,7 +2077,7 @@ body, html {
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 
-  /* Body states controlling mobile screen navigation */
+  
   .active-chat .sidebar {
     transform: translateX(-100%);
   }
@@ -2099,9 +2093,7 @@ body, html {
   }
 }
 
-/* ==========================================================================
-   AETHERAI PREMIUM MINIMALIST MOCKUP STYLES
-   ========================================================================== */
+
 #security-mask-gate.light-theme {
   --agent-bg: #f4f4f6;
   --agent-text: #1c1c1e;
@@ -2158,7 +2150,7 @@ body, html {
   pointer-events: none;
 }
 
-/* Header Styling matching mockup */
+
 .agent-header {
   height: 60px;
   padding: 0 20px;
@@ -2212,7 +2204,7 @@ body, html {
   font-weight: 600;
 }
 
-/* Workspace Layout */
+
 .agent-workspace {
   flex: 1;
   display: flex;
@@ -2222,7 +2214,7 @@ body, html {
   max-width: 600px;
   width: 100%;
   margin: 0 auto;
-  overflow: hidden; /* Prevent infinite expanding and keep console pinned */
+  overflow: hidden; 
 }
 
 .agent-chat-history {
@@ -2235,7 +2227,7 @@ body, html {
   gap: 20px;
 }
 
-/* Welcome Screen */
+
 .agent-welcome-screen {
   margin: auto;
   text-align: center;
@@ -2264,7 +2256,7 @@ body, html {
   letter-spacing: -0.5px;
 }
 
-/* Chat Messages Bubble styling */
+
 .agent-msg-bubble {
   max-width: 85%;
   line-height: 1.6;
@@ -2294,7 +2286,7 @@ body, html {
   padding: 4px 0;
 }
 
-/* Logs Panel styling */
+
 .agent-logs-panel {
   width: 90%;
   margin: 0 auto 12px auto;
@@ -2342,7 +2334,7 @@ body, html {
   overflow-y: auto;
 }
 
-/* Console input area styling (mockup matching) */
+
 .agent-input-console {
   padding: 0 20px 24px 20px;
   display: flex;
@@ -2409,7 +2401,7 @@ body, html {
   color: var(--agent-text);
 }
 
-/* Model Selector dropdown pill */
+
 .console-model-selector {
   display: inline-flex;
   align-items: center;
@@ -2469,7 +2461,7 @@ body, html {
   color: var(--agent-text);
 }
 
-/* Speaker Send Button */
+
 .right-buttons-group {
   display: flex;
   align-items: center;
@@ -2494,7 +2486,7 @@ body, html {
   transform: scale(0.95);
 }
 
-/* Console Image Preview styles */
+
 .console-img-preview-container {
   display: flex;
   justify-content: flex-start;
@@ -2539,8 +2531,8 @@ body, html {
   background: #ff4a4a;
 }
 
-/* --- 3. Admin Portal Modal Styling --- */
-.admin-portal-modal {
+
+.sys-config-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -2678,7 +2670,7 @@ body, html {
   margin-bottom: 8px;
 }
 
-.admin-portal-message {
+.sys-config-message {
   margin-top: 14px;
   font-size: 0.88rem;
   text-align: center;
@@ -2686,19 +2678,17 @@ body, html {
   min-height: 18px;
 }
 
-.admin-portal-message.success {
+.sys-config-message.success {
   color: var(--accent-success);
 }
 
-.admin-portal-message.error {
+.sys-config-message.error {
   color: #ff3b30;
 }
 
-/* ============================================================
-   TELEGRAM FEATURES - Context Menu, Reactions, Reply, Emoji
-   ============================================================ */
 
-/* Context Menu */
+
+
 .msg-context-menu {
   position: fixed;
   z-index: 9999;
@@ -2737,7 +2727,7 @@ body, html {
   background: var(--hover-bg);
 }
 
-/* Pinned Banner */
+
 .pinned-message-bar {
   display: flex;
   align-items: center;
@@ -2755,7 +2745,7 @@ body, html {
 .pinned-text { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .pinned-close { width: 24px !important; height: 24px !important; }
 
-/* Reply Preview Bar */
+
 .reply-preview-bar,
 .edit-mode-bar {
   display: flex;
@@ -2782,7 +2772,7 @@ body, html {
 .reply-preview-name { font-size: 0.75rem; font-weight: 700; color: var(--accent-color); display: block; }
 .reply-preview-text { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
-/* Message Reply Quote */
+
 .reply-quote {
   display: flex;
   gap: 8px;
@@ -2798,7 +2788,7 @@ body, html {
 .reply-quote-name { font-size: 0.72rem; font-weight: 700; color: var(--accent-color); display: block; }
 .reply-quote-text { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
-/* Forwarded badge */
+
 .forwarded-badge {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -2806,14 +2796,14 @@ body, html {
   margin-bottom: 4px;
   display: block;
 }
-/* Edited badge */
+
 .edited-badge {
   font-size: 0.68rem;
   color: var(--text-muted);
   margin-left: 4px;
 }
 
-/* Reactions row */
+
 .reactions-row {
   display: flex;
   flex-wrap: wrap;
@@ -2837,7 +2827,7 @@ body, html {
 .reaction-chip.reacted { border-color: var(--accent-color); background: rgba(36,129,204,0.18); }
 .reaction-chip .reaction-count { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
 
-/* Quick reaction strip (appears on hover) */
+
 .quick-reactions {
   position: absolute;
   display: flex;
@@ -2870,7 +2860,7 @@ body, html {
 }
 .quick-reaction-btn:hover { transform: scale(1.3); }
 
-/* Message wrapper for hover context */
+
 .message-wrapper {
   position: relative;
 }
@@ -2880,7 +2870,7 @@ body, html {
   transform: translateY(0);
 }
 
-/* Date Separator */
+
 .date-separator {
   display: flex;
   align-items: center;
@@ -2905,7 +2895,7 @@ body, html {
   white-space: nowrap;
 }
 
-/* Emoji Picker */
+
 .emoji-picker-panel {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -2969,7 +2959,7 @@ body, html {
 }
 .emoji-item:hover { background: var(--hover-bg); transform: scale(1.2); }
 
-/* Forward modal */
+
 .forward-modal-card {
   background: var(--bg-secondary);
   border-radius: 16px;
@@ -3024,7 +3014,7 @@ body, html {
   flex-shrink: 0;
 }
 
-/* Modal overlay for forward */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -3044,9 +3034,7 @@ body, html {
   30% { background: rgba(36,129,204,0.25); }
 }
 
-/* ==========================================================================
-   iOS NATIVE ACTIVE CALL UI & KEYPAD DIALPAD STYLES
-   ========================================================================== */
+
 .ios-call-container {
   position: absolute;
   top: 0;
@@ -3113,7 +3101,7 @@ body, html {
   opacity: 0.8;
 }
 
-/* 2 Rows x 3 Columns Grid of Round Buttons */
+
 .ios-call-action-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3156,14 +3144,14 @@ body, html {
   transform: scale(0.92);
 }
 
-/* Active Button State (e.g., Muted / Active Speaker) */
+
 .ios-btn-circle.active-on,
 .ios-btn-circle.muted {
   background: #ffffff !important;
   color: #000000 !important;
 }
 
-/* End Call Red Circle Button */
+
 .ios-btn-end {
   background: #ff3b30 !important;
   color: #ffffff !important;
@@ -3181,7 +3169,7 @@ body, html {
   letter-spacing: 0.2px;
 }
 
-/* iOS Keypad Overlay */
+
 .ios-keypad-overlay {
   position: fixed;
   inset: 0;
@@ -3308,7 +3296,7 @@ body, html {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* --- Microphone Permission Detection & Request Modal Styles --- */
+
 .mic-perm-card {
   background: var(--bg-sidebar);
   border: 1px solid var(--border-color);
