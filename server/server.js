@@ -475,13 +475,15 @@ const getValidKey = (...keys) => {
 // Diagnostic endpoint to check OpenAI environment configuration securely
 app.get('/api/aether-status', (req, res) => {
   const apiKey = getValidKey(
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_KEY,
     process.env.OPENAI_API_KEY,
     process.env.OPENAI_KEY,
     process.env.CHATGPT_API_KEY,
     process.env.CHATGPT_KEY,
     process.env.key,
     process.env.KEY,
-    Buffer.from('QVEuQWI4Uk42SjZocEloWnNNTDMtYkg5X0tSaTN1ZlU1X1ZMYmNWcFhsNkVWQ2stcFlrNEE=', 'base64').toString('utf8')
+    Buffer.from('QVEuQWI4Uk42Sk9yM21uUmdZN3FsX2Z3V3JqVnpKUTRMVHhVM1hqMktfeS1GZ3ZpOWp4LVE=', 'base64').toString('utf8')
   );
 
   res.json({
