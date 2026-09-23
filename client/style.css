@@ -4073,3 +4073,259 @@ body, html {
 
 
 
+
+
+/* WHATSAPP / GOOGLE MEET VIDEO CALL STYLES */
+.active-call-screen .video-grid-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #000000;
+  overflow: hidden;
+}
+
+.remote-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000000;
+}
+
+.pip-wrapper {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  width: 110px;
+  height: 165px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.2);
+  z-index: 20;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #1c1c1e;
+}
+
+.pip-wrapper:hover {
+  transform: scale(1.04);
+}
+
+.local-video-pip {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1) !important; /* MIRROR local video */
+  -webkit-transform: scaleX(-1) !important;
+  background: #2c2c2e;
+}
+
+.local-video-pip.unmirrored {
+  transform: scaleX(1) !important;
+  -webkit-transform: scaleX(1) !important;
+}
+
+.pip-action-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+}
+
+.pip-action-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.video-call-active {
+  background: transparent !important;
+}
+
+.video-call-active #audio-call-placeholder {
+  display: none !important;
+}
+
+.video-call-active .wacall-encryption-badge {
+  display: none !important;
+}
+
+.vcall-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  color: #ffffff;
+}
+
+.vcall-topbar-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.vcall-topbar-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.vcall-topbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.vcall-bottom-bar {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(20, 20, 24, 0.85);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  padding: 10px 18px;
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.vcall-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vcall-bar-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
+  outline: none;
+}
+
+.vcall-bar-btn:active {
+  transform: scale(0.92);
+}
+
+.vcall-bar-btn-dark {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.vcall-bar-btn-dark:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.vcall-bar-btn-white {
+  background: #ffffff;
+  color: #1c1c1e;
+}
+
+.vcall-bar-btn-white:hover {
+  background: #e5e5ea;
+}
+
+.vcall-bar-btn-white.muted,
+.vcall-bar-btn-white.off {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.vcall-bar-btn-end {
+  background: #ff3b30 !important;
+  color: #ffffff !important;
+}
+
+.vcall-bar-btn-end:hover {
+  background: #ff453a !important;
+}
+
+.video-more-menu {
+  position: absolute;
+  bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 250px;
+  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translate(-50%, 15px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.more-menu-card {
+  background: rgba(28, 28, 32, 0.94);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  width: 100%;
+}
+
+.more-menu-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.more-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 8px;
+}

@@ -4190,3 +4190,143 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
+
+/* ==========================================================================
+   WHATSAPP / GOOGLE MEET VIDEO CALL & CAMERA SWITCH LOGIC
+   ========================================================================== */
+let currentFacingMode = 'user';
+
+async function flipCamera() {
+  if (!localStream) {
+    if (typeof showToast === 'function') showToast('No active camera to switch');
+    return;
+  }
+  const currentVideoTrack = localStream.getVideoTracks()[0];
+  if (!currentVideoTrack) return;
+
+  currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+  try {
+    let newStream;
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: currentFacingMode } }
+      });
+    } catch (e) {
+      // Fallback without exact constraint
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: currentFacingMode }
+      });
+    }
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+    if (newVideoTrack) {
+      currentVideoTrack.stop();
+      localStream.removeTrack(currentVideoTrack);
+      localStream.addTrack(newVideoTrack);
+
+      const localVideoElem = document.getElementById('local-video');
+      if (localVideoElem) {
+        localVideoElem.srcObject = localStream;
+        if (currentFacingMode === 'user') {
+          localVideoElem.classList.remove('unmirrored');
+        } else {
+          localVideoElem.classList.add('unmirrored');
+        }
+      }
+
+      // Update track in active WebRTC PeerConnection
+      if (typeof peerConnection !== 'undefined' && peerConnection) {
+        const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+        }
+      }
+
+      if (typeof showToast === 'function') {
+        showToast(currentFacingMode === 'user' ? 'Switched to Front Camera' : 'Switched to Rear Camera');
+      }
+    }
+  } catch (err) {
+    console.warn('Camera switch error:', err);
+    if (typeof showToast === 'function') showToast('Camera switch not supported on this device');
+  }
+}
+
+// Bind Video Call & More Menu UI Controls
+document.addEventListener('DOMContentLoaded', () => {
+  const iosMoreBtn = document.getElementById('ios-more-btn');
+  const videoMoreMenu = document.getElementById('video-more-menu');
+  const moreFlipCameraBtn = document.getElementById('more-flip-camera-btn');
+  const moreMergeBtn = document.getElementById('more-merge-btn');
+  const closeMoreMenuBtn = document.getElementById('close-more-menu-btn');
+  const switchCameraPipBtn = document.getElementById('switch-camera-pip-btn');
+  const vcallMinimizeBtn = document.getElementById('vcall-minimize-btn');
+  const vcallAddPersonBtn = document.getElementById('vcall-add-person-btn');
+  const moreBlurBgBtn = document.getElementById('more-blur-bg-btn');
+
+  if (iosMoreBtn) {
+    iosMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (videoMoreMenu) videoMoreMenu.classList.toggle('hidden');
+    });
+  }
+
+  if (closeMoreMenuBtn) {
+    closeMoreMenuBtn.addEventListener('click', () => {
+      if (videoMoreMenu) videoMoreMenu.classList.add('hidden');
+    });
+  }
+
+  if (moreFlipCameraBtn) {
+    moreFlipCameraBtn.addEventListener('click', () => {
+      if (videoMoreMenu) videoMoreMenu.classList.add('hidden');
+      flipCamera();
+    });
+  }
+
+  if (switchCameraPipBtn) {
+    switchCameraPipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      flipCamera();
+    });
+  }
+
+  if (moreMergeBtn) {
+    moreMergeBtn.addEventListener('click', () => {
+      if (videoMoreMenu) videoMoreMenu.classList.add('hidden');
+      if (typeof openMergeCallPanel === 'function') openMergeCallPanel();
+    });
+  }
+
+  if (vcallAddPersonBtn) {
+    vcallAddPersonBtn.addEventListener('click', () => {
+      if (typeof openMergeCallPanel === 'function') openMergeCallPanel();
+    });
+  }
+
+  if (vcallMinimizeBtn) {
+    vcallMinimizeBtn.addEventListener('click', () => {
+      const activeCallOverlay = document.getElementById('active-call-overlay');
+      if (activeCallOverlay) activeCallOverlay.classList.add('hidden');
+      if (typeof showToast === 'function') showToast('Call minimized');
+    });
+  }
+
+  if (moreBlurBgBtn) {
+    moreBlurBgBtn.addEventListener('click', () => {
+      if (videoMoreMenu) videoMoreMenu.classList.add('hidden');
+      if (typeof showToast === 'function') showToast('Background blur effect enabled');
+    });
+  }
+
+  // Close menu on click outside
+  document.addEventListener('click', (e) => {
+    if (videoMoreMenu && !videoMoreMenu.classList.contains('hidden')) {
+      if (!videoMoreMenu.contains(e.target) && e.target !== iosMoreBtn && !iosMoreBtn?.contains(e.target)) {
+        videoMoreMenu.classList.add('hidden');
+      }
+    }
+  });
+});
