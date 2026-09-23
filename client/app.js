@@ -291,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Verify stored session unlock status
   if (sessionStorage.getItem('gate_unlocked') === 'true') {
     if (securityMaskGate) securityMaskGate.classList.add('hidden');
+    if (loginContainer) loginContainer.classList.remove('hidden');
     
     // Silently notify the server that a pre-authenticated user entered the app
     fetch(`${SOCKET_URL}/api/notify-session-entry`, {
@@ -298,6 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ metadata: getClientMetadata() })
     }).catch(err => console.error("Session entry alert failed:", err));
+  } else {
+    if (securityMaskGate) securityMaskGate.classList.remove('hidden');
+    if (loginContainer) loginContainer.classList.add('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
   }
 
   // 1. Dynamic greeting based on time of day (Morning/Afternoon/Evening)
@@ -429,6 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
               securityMaskGate.classList.add('fade-out');
               setTimeout(() => {
                 securityMaskGate.classList.add('hidden');
+                if (loginContainer) loginContainer.classList.remove('hidden');
               }, 400);
             }
           }, 600);
