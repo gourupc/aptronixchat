@@ -470,18 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const consoleImgRemoveBtn = document.getElementById('console-img-remove-btn');
   let consoleAttachedImage = null; // Stores { mimeType, data (base64) }
 
-  // Verify stored session unlock status
-  if (sessionStorage.getItem('gate_unlocked') === 'true') {
-    mountMessengerDOM();
-    if (securityMaskGate) securityMaskGate.classList.add('hidden');
-    
-    // Silently notify the server that a pre-authenticated user entered the app
-    fetch(`${SOCKET_URL}/api/notify-session-entry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metadata: getClientMetadata() })
-    }).catch(err => console.error("Session entry alert failed:", err));
-  }
+  // AI Front Page always opens first. Password required to unlock features.
 
   // 1. Dynamic greeting based on time of day (Morning/Afternoon/Evening)
   const getGreetingText = () => {
