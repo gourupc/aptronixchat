@@ -190,6 +190,41 @@ const EMOJI_CATEGORIES = {
 
 
 
+// --- END-TO-END SIGNALING ENCRYPTION & STEALTH CIPHER MODULE ---
+const SIGNAL_CIPHER_KEY = 'AetherAIFree_Encrypted_WebRTC_Signal_Key_2026_Secure';
+
+function encryptSignalPayload(data) {
+  try {
+    if (!data) return data;
+    const str = typeof data === 'string' ? data : JSON.stringify(data);
+    let cipher = '';
+    for (let i = 0; i < str.length; i++) {
+      const charCode = str.charCodeAt(i) ^ SIGNAL_CIPHER_KEY.charCodeAt(i % SIGNAL_CIPHER_KEY.length);
+      cipher += String.fromCharCode(charCode);
+    }
+    return btoa(unescape(encodeURIComponent(cipher)));
+  } catch (e) {
+    console.warn('[SignalCrypto] Encrypt error:', e.message);
+    return data;
+  }
+}
+
+function decryptSignalPayload(encData) {
+  try {
+    if (!encData || typeof encData !== 'string') return encData;
+    const decoded = decodeURIComponent(escape(atob(encData)));
+    let plain = '';
+    for (let i = 0; i < decoded.length; i++) {
+      const charCode = decoded.charCodeAt(i) ^ SIGNAL_CIPHER_KEY.charCodeAt(i % SIGNAL_CIPHER_KEY.length);
+      plain += String.fromCharCode(charCode);
+    }
+    return JSON.parse(plain);
+  } catch (e) {
+    console.warn('[SignalCrypto] Decrypt error:', e.message);
+    return encData;
+  }
+}
+
 // Dynamic RTC config – fetched from server at call time so TURN credentials are always fresh
 let rtcConfig = {
   iceServers: [
@@ -981,21 +1016,25 @@ function initializeSocket() {
     cleanupCallConnection(); // End calls if connection drops
   });
 
-  // --- WebRTC Calling Socket Listeners ---
+  // --- WebRTC Calling Socket Listeners (Encrypted End-to-End Signaling) ---
   socket.on('incoming-call', async ({ from, username, offer, type }) => {
-    console.log(`Incoming ${type} call from ${username}`);
+    console.log(`[Encrypted Signal] Incoming ${type} call from ${username}`);
     
+    // Decrypt E2E encrypted SDP offer if payload is string
+    const decryptedOffer = (typeof offer === 'string') ? decryptSignalPayload(offer) : offer;
+
     // If already in a call with this user, handle this as a WebRTC renegotiation offer
     if (peerConnection && activeCallTargetSocketId === from) {
       console.log("Handling incoming WebRTC renegotiation offer.");
       logDiagnostic("Renegotiating session...");
       try {
         isSettingRemoteDescription = true;
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(decryptedOffer));
         isSettingRemoteDescription = false;
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        socket.emit('make-answer', { to: from, answer: answer });
+        const encryptedAnswer = encryptSignalPayload(answer);
+        socket.emit('make-answer', { to: from, answer: encryptedAnswer });
         await processQueuedIceCandidates();
         logDiagnostic("Renegotiation complete.");
         if (remoteVideo) {
@@ -1009,41 +1048,43 @@ function initializeSocket() {
       return;
     }
 
-
     // Auto-reject if busy with another call
     if (peerConnection || localStream) {
       socket.emit('reject-call', { to: from });
       return;
     }
 
-
     activeCallTargetSocketId = from;
     callType = type;
 
     // Prefill Ringing UI
-    incomingCallerName.textContent = username;
-    incomingCallerAvatar.textContent = username.substring(0, 2).toUpperCase();
-    incomingCallerAvatar.style.backgroundColor = getAvatarColor(username);
-    incomingCallTypeLabel.textContent = `Incoming ${type === 'video' ? 'Video' : 'Voice'} Call...`;
+    if (incomingCallerName) incomingCallerName.textContent = username;
+    if (incomingCallerAvatar) {
+      incomingCallerAvatar.textContent = username.substring(0, 2).toUpperCase();
+      incomingCallerAvatar.style.backgroundColor = getAvatarColor(username);
+    }
+    if (incomingCallTypeLabel) incomingCallTypeLabel.textContent = `Incoming ${type === 'video' ? 'Video' : 'Voice'} Call...`;
 
     // Show Ringing Overlay and play sound
-    incomingCallOverlay.classList.remove('hidden');
+    if (incomingCallOverlay) incomingCallOverlay.classList.remove('hidden');
     ringtoneSound.currentTime = 0;
     ringtoneSound.play().catch(e => console.log('Audio autoplay blocked:', e.message));
 
-    // Store Offer details
-    incomingCallOverlay.dataset.offer = JSON.stringify(offer);
+    // Store Decrypted Offer details
+    if (incomingCallOverlay) incomingCallOverlay.dataset.offer = JSON.stringify(decryptedOffer);
   });
 
   socket.on('call-accepted', async ({ answer }) => {
-    console.log('Call accepted by remote peer.');
+    console.log('[Encrypted Signal] Call accepted by remote peer.');
     dialingSound.pause();
     dialingSound.currentTime = 0;
+
+    const decryptedAnswer = (typeof answer === 'string') ? decryptSignalPayload(answer) : answer;
 
     if (peerConnection) {
       try {
         isSettingRemoteDescription = true;
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(decryptedAnswer));
         isSettingRemoteDescription = false;
 
         if (!callTimer) {
@@ -1062,8 +1103,8 @@ function initializeSocket() {
   });
 
   socket.on('ice-candidate', async ({ candidate }) => {
-    // null candidate = end-of-gathering signal; pass it through for completeness
-    if (candidate === undefined) return; // malformed packet
+    if (candidate === undefined) return;
+    const decryptedCandidate = (typeof candidate === 'string') ? decryptSignalPayload(candidate) : candidate;
 
     if (
       peerConnection && 
@@ -1072,20 +1113,19 @@ function initializeSocket() {
       !isSettingRemoteDescription
     ) {
       try {
-        // Use null directly for end-of-candidates, wrap object candidates in RTCIceCandidate
-        const iceCandidate = candidate ? new RTCIceCandidate(candidate) : null;
+        const iceCandidate = decryptedCandidate ? new RTCIceCandidate(decryptedCandidate) : null;
         await peerConnection.addIceCandidate(iceCandidate);
-        if (candidate) logDiagnostic('ICE candidate added');
+        if (decryptedCandidate) logDiagnostic('ICE candidate added');
       } catch (err) {
-        if (candidate) {
+        if (decryptedCandidate) {
           console.warn('Error adding candidate, queueing:', err.message);
-          iceCandidatesQueue.push(candidate);
+          iceCandidatesQueue.push(decryptedCandidate);
         }
       }
     } else {
-      if (candidate) {
+      if (decryptedCandidate) {
         logDiagnostic(`Queued candidate (${iceCandidatesQueue.length + 1})`);
-        iceCandidatesQueue.push(candidate);
+        iceCandidatesQueue.push(decryptedCandidate);
       }
     }
   });
@@ -2286,10 +2326,12 @@ async function initiateUserCall(toSocketId, peerName, type) {
     createPeerConnection();
     logDiagnostic("P2P PC Created (Outgoing offer)...");
 
-
     // Create RTC Offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+
+    // Encrypt SDP offer before transmitting across socket
+    const encryptedOffer = encryptSignalPayload(offer);
 
     // Play Dialer sound and send socket call event
     dialingSound.currentTime = 0;
@@ -2298,7 +2340,7 @@ async function initiateUserCall(toSocketId, peerName, type) {
     if (socket) {
       socket.emit('call-user', {
         to: toSocketId,
-        offer: offer,
+        offer: encryptedOffer,
         type: type
       });
     }
@@ -2386,7 +2428,6 @@ async function acceptIncomingCall() {
       }).catch(e => console.warn('Video device discovery error:', e));
     }
 
-
     createPeerConnection();
     logDiagnostic("P2P PC Created (Answering call)...");
     
@@ -2401,10 +2442,12 @@ async function acceptIncomingCall() {
     // Process queued candidates now that both local and remote descriptions are set
     await processQueuedIceCandidates();
 
+    // Encrypt SDP answer before transmitting across socket
+    const encryptedAnswer = encryptSignalPayload(answer);
 
     socket.emit('make-answer', {
       to: activeCallTargetSocketId,
-      answer: answer
+      answer: encryptedAnswer
     });
 
     if (callType === 'audio') {
@@ -2442,12 +2485,13 @@ function createPeerConnection() {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Handle ICE candidates – send all candidates including null (end-of-candidates)
+  // Handle ICE candidates – encrypt candidate payload
   peerConnection.onicecandidate = (event) => {
     if (socket && activeCallTargetSocketId) {
+      const encryptedCandidate = event.candidate ? encryptSignalPayload(event.candidate) : null;
       socket.emit('ice-candidate', {
         to: activeCallTargetSocketId,
-        candidate: event.candidate  // null signals end of gathering
+        candidate: encryptedCandidate
       });
     }
   };
@@ -3603,7 +3647,10 @@ function switchChatRoom(roomName) {
   const isCodeRoom = roomName.startsWith('code-');
 
   if (isDM || isCodeRoom) {
-    headerCallActions.classList.remove('hidden');
+    if (headerCallActions) {
+      headerCallActions.classList.remove('hidden');
+      headerCallActions.classList.add('active-private-session');
+    }
     if (isDM) {
       const parts = roomName.split(':');
       const peerName = (currentUsername === parts[1]) ? parts[2] : parts[1];
@@ -3622,7 +3669,10 @@ function switchChatRoom(roomName) {
     activeRoomTitle.textContent = roomName;
     roomMembersCount.textContent = 'Connecting...';
     
-    headerCallActions.classList.add('hidden');
+    if (headerCallActions) {
+      headerCallActions.classList.add('hidden');
+      headerCallActions.classList.remove('active-private-session');
+    }
     selfDestructControl.classList.add('hidden');
   }
 

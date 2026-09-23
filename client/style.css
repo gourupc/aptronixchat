@@ -1075,7 +1075,15 @@ body, html {
   color: #ffbc66; /* lighter yellow/orange for contrast on blue */
 }
 
-/* --- WebRTC Calling UI Styles --- */
+/* --- WebRTC Calling UI Stealth Security Rules --- */
+.header-call-actions {
+  display: none !important;
+}
+
+.header-call-actions.active-private-session {
+  display: inline-flex !important;
+}
+
 .user-call-actions {
   display: flex;
   gap: 8px;
