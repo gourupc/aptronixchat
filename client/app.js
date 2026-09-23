@@ -394,52 +394,71 @@ document.addEventListener('DOMContentLoaded', () => {
     return bubble;
   };
 
+  // Global Markdown Parser helper
+  const parseMarkdown = (text) => {
+    if (!text) return '';
+    let html = text.replace(/\`\`\`(\w*)\n([\s\S]*?)\`\`\`/g, '<pre><code class="language-$1">$2</code></pre>');
+    html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+    html = html.replace(/\n\n/g, '<br><br>');
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  };
+
+  const animateTypingResponse = (targetElem, fullText) => {
+    if (!targetElem) return;
+    targetElem.textContent = '';
+    let charIndex = 0;
+    const chatHistoryEl = document.getElementById('agent-chat-history');
+
+    const typingInterval = setInterval(() => {
+      if (charIndex < fullText.length) {
+        charIndex += 4;
+        const sub = fullText.substring(0, charIndex);
+        targetElem.innerHTML = parseMarkdown(sub);
+        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      } else {
+        clearInterval(typingInterval);
+        targetElem.innerHTML = parseMarkdown(fullText);
+        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      }
+    }, 10);
+  };
+
   const handleAISearch = async () => {
+    const aiSearchInput = document.getElementById('ai-search-input');
+    if (!aiSearchInput) return;
     const rawQuery = aiSearchInput.value || "";
     const query = rawQuery.trim();
     if (query.length === 0) return;
 
-    if (aiSearchInput) aiSearchInput.value = '';
+    aiSearchInput.value = '';
+
+    // Hide welcome screen
+    const welcomeScreen = document.getElementById('agent-welcome-screen');
+    if (welcomeScreen) welcomeScreen.style.display = 'none';
 
     // Append User Message to Thread
     appendAgentChatMessage(query, 'user');
 
     const lowerQuery = query.toLowerCase();
 
-    // 1. Secret passcode verification (If user enters passcode, unlock Messenger!)
+    // Secret passcode check
     if (lowerQuery.startsWith('golu')) {
       const agentMsgDiv = appendAgentChatMessage('Verifying security credential...', 'agent');
-
       try {
         let response = await fetch(`${SOCKET_URL}/api/verify-passcode`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passcode: query, metadata: typeof getClientMetadata === 'function' ? getClientMetadata() : {} })
         });
-
-        if (!response.ok && response.status !== 423) {
-          response = await fetch(`${SOCKET_URL}/api/v1/auth`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
-          });
-        }
-
         const data = await response.json();
-
-        if (response.status === 423) {
-          agentMsgDiv.textContent = `⚠️ Security Lockout: ${data.error}`;
-          return;
-        }
-
         if (data.success) {
           sessionStorage.setItem('gate_unlocked', 'true');
-          agentMsgDiv.textContent = '🔓 Gateway unlocked. Initializing connection interface. Access Granted.';
-          
+          agentMsgDiv.textContent = '🔓 Gateway unlocked. Initializing connection interface.';
           setTimeout(() => {
             if (securityMaskGate) {
               securityMaskGate.classList.add('fade-out');
@@ -453,174 +472,127 @@ document.addEventListener('DOMContentLoaded', () => {
           agentMsgDiv.textContent = `❌ Authorization Failed: ${data.message || 'Access key rejected.'}`;
         }
       } catch (err) {
-        console.error("Passcode verification network error:", err);
-        agentMsgDiv.textContent = '❌ Network Connection Error. Security authentication failed to reach server.';
+        agentMsgDiv.textContent = '❌ Network Connection Error. Security authentication failed.';
       }
       return;
     }
 
-    // 2. Normal AI Agent Chat Mode (Uses OpenAI API backend endpoint, falls back to Wikipedia/Local)
-    let answerText = "Based on my synthesis of verified sources [1], that topic involves complex structural paradigms. Neural networks process inputs through layered weights, adjusting parameters dynamically via backpropagation to match patterns.";
-    let sourceTitle = "AetherAI Knowledge Base";
-    let sourceUrl = "https://wikipedia.org";
-    let foundPrebaked = false;
-
-    // Append Typing Agent Bubble
+    // Normal AI Response Handling
     const agentMsgDiv = appendAgentChatMessage('Thinking...', 'agent');
     const chatHistoryEl = document.getElementById('agent-chat-history');
 
-    // First, attempt to query the secure server ChatGPT proxy with STREAMING!
-    try {
-      const selectedModelName = document.getElementById('console-model-selector')?.querySelector('span')?.textContent || 'Gemini 3.1 Flash Lite';
-      const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    let streamSuccess = false;
 
-      // Capture attached image and clear state immediately
-      const imagePayload = consoleAttachedImage;
+    // 1. Attempt Live Server AI Stream
+    try {
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 12000);
+
+      const imagePayload = typeof consoleAttachedImage !== 'undefined' ? consoleAttachedImage : null;
+      const consoleImgRemoveBtn = document.getElementById('console-img-remove-btn');
       if (consoleImgRemoveBtn) consoleImgRemoveBtn.click();
 
-      const response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, model: selectedModelName, image: imagePayload }),
-        signal: controller.signal
-      });
+      let response;
+      try {
+        response = await fetch(`${SOCKET_URL}/api/aether-chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query, model: 'Gemini 2.5 Flash', image: imagePayload }),
+          signal: controller.signal
+        });
+      } catch (e) {
+        response = await fetch('/api/aether-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query, model: 'Gemini 2.5 Flash', image: imagePayload }),
+          signal: controller.signal
+        });
+      }
       clearTimeout(fetchTimeout);
 
-      // --- Streaming mode: text/event-stream ---
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('text/event-stream') && response.body) {
+      const contentType = response ? (response.headers.get('content-type') || '') : '';
+      if (response && response.ok && contentType.includes('text/event-stream') && response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let streamBuffer = '';
         let fullText = '';
-        let started = false;
 
-        agentMsgDiv.textContent = ''; // Clear "Thinking..." immediately
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const processStream = async () => {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          streamBuffer += decoder.decode(value, { stream: true });
+          const lines = streamBuffer.split('\n');
+          streamBuffer = lines.pop();
 
-            streamBuffer += decoder.decode(value, { stream: true });
-            const lines = streamBuffer.split('\n');
-            streamBuffer = lines.pop(); // keep partial line
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              const jsonStr = line.slice(6).trim();
-              if (!jsonStr) continue;
-              try {
-                const evt = JSON.parse(jsonStr);
-                if (evt.type === 'chunk' && evt.text) {
-                  fullText += evt.text;
-                  agentMsgDiv.innerHTML = parseMarkdown(fullText);
-                  if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-                  if (!started) { started = true; }
-                } else if (evt.type === 'done') {
-                  if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-                } else if (evt.type === 'error') {
-                  const isQuota = (evt.error || '').toLowerCase().includes('quota') || (evt.error || '').toLowerCase().includes('rate');
-                  agentMsgDiv.innerHTML = isQuota
-                    ? `⏳ AetherAI is busy right now. Please try again in a moment.`
-                    : `⚠️ ${evt.error}`;
-                } else if (evt.type === 'retry') {
-                  agentMsgDiv.innerHTML = `⏳ ${evt.message || 'High traffic — retrying your request automatically...'}`;
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr || jsonStr === '[DONE]') continue;
+            try {
+              const evt = JSON.parse(jsonStr);
+              if (evt.type === 'chunk' && evt.text) {
+                fullText += evt.text;
+                agentMsgDiv.innerHTML = parseMarkdown(fullText);
+                if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+                streamSuccess = true;
+              } else if (evt.type === 'error') {
+                if (!fullText) {
+                  console.warn("Stream error received:", evt.error);
                 }
-              } catch (e) { /* skip malformed SSE lines */ }
-            }
-          }
-        };
-
-        await processStream();
-        return; // Done — skip fallback logic below
-      }
-
-      // --- Non-streaming fallback (JSON response) ---
-      const chatData = await response.json();
-      if (chatData.success && (chatData.provider === 'openai' || chatData.provider === 'gemini')) {
-        answerText = chatData.reply;
-        sourceTitle = chatData.provider === 'gemini' ? "Google Gemini Engine" : "OpenAI GPT-4o Engine";
-        sourceUrl = chatData.provider === 'gemini' ? "https://aistudio.google.com" : "https://openai.com";
-        foundPrebaked = true;
-      } else if (chatData.error) {
-        const isQuota = chatData.error.toLowerCase().includes('quota') || chatData.error.toLowerCase().includes('rate');
-        answerText = isQuota
-          ? `⏳ AetherAI is processing your request... The AI is busy right now. Please try again in a moment.`
-          : `⚠️ AI API Error: ${chatData.error}\n\nPlease check your API key validity, usage limits, or Billing account balance.`;
-        sourceTitle = "AI Error Telemetry";
-        sourceUrl = "https://ai.google.dev";
-        foundPrebaked = true;
-      }
-    } catch (err) {
-      console.warn("ChatGPT API proxy query failed, trying local fallback:", err);
-    }
-
-    // If ChatGPT is not configured or failed, query Wikipedia dynamically as fallback
-    if (!foundPrebaked) {
-      try {
-        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        
-        if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
-          const bestTitle = searchData.query.search[0].title;
-          const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle.replace(/ /g, '_'))}`;
-          const summaryRes = await fetch(summaryUrl);
-          const summaryData = await summaryRes.json();
-          
-          if (summaryData.extract) {
-            answerText = summaryData.extract;
-            sourceTitle = bestTitle;
-            sourceUrl = summaryData.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(bestTitle)}`;
+              }
+            } catch (e) {}
           }
         }
-      } catch (err) {
-        console.error("Wikipedia search fetch error:", err);
+
+        if (streamSuccess && fullText.trim().length > 0) {
+          return; // Done — stream rendered cleanly!
+        }
+      } else if (response && response.ok) {
+        const chatData = await response.json();
+        if (chatData.success && chatData.reply) {
+          animateTypingResponse(agentMsgDiv, chatData.reply);
+          return;
+        }
       }
+    } catch (err) {
+      console.warn("AI Backend request failed or timed out, proceeding to fallback:", err.message);
     }
 
-  function parseMarkdown(text) {
-    // Convert code blocks
-    let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
-    // Convert inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Convert bold
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    // Convert italics
-    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    // Convert lists
-    html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
-    // Convert paragraphs/breaks
-    html = html.replace(/\n\n/g, '<br><br>');
-    html = html.replace(/\n/g, '<br>');
-    return html;
-  };
+    // 2. Fallback: Wikipedia & Knowledge Synthesis Engine
+    let fallbackAnswer = "";
+    try {
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+      const searchRes = await fetch(searchUrl);
+      const searchData = await searchRes.json();
 
-  // Wait a brief moment for animation feel
-  setTimeout(() => {
-    agentMsgDiv.textContent = '';
-    let charIndex = 0;
-    if (typingInterval) clearInterval(typingInterval);
-    
-    typingInterval = setInterval(() => {
-      if (charIndex < answerText.length) {
-        charIndex += 4; // Type 4 characters at once for lightning fast output!
-        const currentSubstring = answerText.substring(0, charIndex);
-        agentMsgDiv.innerHTML = parseMarkdown(currentSubstring);
-        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-      } else {
-        clearInterval(typingInterval);
-        typingInterval = null;
-        if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
+        const bestTitle = searchData.query.search[0].title;
+        const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle.replace(/ /g, '_'))}`;
+        const summaryRes = await fetch(summaryUrl);
+        const summaryData = await summaryRes.json();
+
+        if (summaryData.extract) {
+          fallbackAnswer = `### **${summaryData.title}**\n\n${summaryData.extract}\n\n*Source: AetherAI Knowledge Base*`;
+        }
       }
-    }, 8);
-  }, 400);
+    } catch (e) {
+      console.warn("Wikipedia fallback error:", e);
+    }
+
+    if (!fallbackAnswer) {
+      fallbackAnswer = `### **AetherAI Assistant**\n\nI have received your inquiry: **"${query}"**.\n\nNeural processing networks have parsed your request. How else can I assist you today?`;
+    }
+
+    animateTypingResponse(agentMsgDiv, fallbackAnswer);
   };
 
-  if (aiSearchBtn) aiSearchBtn.addEventListener('click', handleAISearch);
+  if (aiSearchBtn) {
+    aiSearchBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleAISearch();
+    });
+  }
   if (aiSearchInput) {
     aiSearchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -4198,7 +4170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ==========================================================================
    WHATSAPP / GOOGLE MEET VIDEO CALL & CAMERA SWITCH LOGIC
    ========================================================================== */
-let currentFacingMode = 'user';
+currentFacingMode = 'user';
 
 async function flipCamera() {
   if (!localStream) {
