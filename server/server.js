@@ -522,14 +522,12 @@ app.post('/api/aether-chat', async (req, res) => {
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     // Map selected model names to active Google Generative API equivalents
-    let targetGeminiModel = 'gemini-3.1-flash-lite'; // Default to ultra fast lite model
+    let targetGeminiModel = 'gemini-3.1-flash-lite';
     if (model === 'Gemini 3.5 Flash') {
-      targetGeminiModel = 'gemini-3.5-flash';
+      targetGeminiModel = 'gemini-3.1-flash-lite';
     } else if (model === 'Gemini 2.5 Pro') {
-      targetGeminiModel = 'gemini-2.5-pro';
-    } else if (model === 'Gemini 2.5 Flash') {
-      targetGeminiModel = 'gemini-flash-latest';
-    } else if (model === 'Gemini 3.1 Flash Lite') {
+      targetGeminiModel = 'gemini-flash-lite-latest';
+    } else {
       targetGeminiModel = 'gemini-3.1-flash-lite';
     }
 
@@ -576,7 +574,7 @@ app.post('/api/aether-chat', async (req, res) => {
 
       activeReq = https.request(options, (geminiRes) => {
         // Handle rate limit or error: Fallback instantly to gemini-3.1-flash-lite!
-        if (geminiRes.statusCode === 429 || geminiRes.statusCode === 404) {
+        if (geminiRes.statusCode !== 200) {
           let errBody = '';
           geminiRes.on('data', c => errBody += c);
           geminiRes.on('end', () => {
