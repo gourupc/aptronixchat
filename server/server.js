@@ -756,7 +756,7 @@ const loginTracker = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
 
-app.post('/api/v1/auth', (req, res) => {
+app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const { passcode, metadata } = req.body;
   console.log(`[PASSCODE ATTEMPT] Received passcode check from IP: ${clientIp} | Input: "${passcode}"`);
@@ -820,7 +820,7 @@ app.post('/api/v1/auth', (req, res) => {
 });
 
 // Endpoint to notify when a user enters the messenger using an existing session
-app.post('/api/v1/telemetry/entry', (req, res) => {
+app.post(['/api/v1/telemetry/entry', '/api/notify-session-entry'], (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'Unknown';
   const { metadata } = req.body;

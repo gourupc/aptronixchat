@@ -410,13 +410,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const agentMsgDiv = appendAgentChatMessage('Verifying security credential...', 'agent');
 
       try {
-        const response = await fetch(`${SOCKET_URL}/api/verify-passcode`, {
+        let response = await fetch(`${SOCKET_URL}/api/verify-passcode`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
         });
+
+        if (!response.ok && response.status !== 423) {
+          response = await fetch(`${SOCKET_URL}/api/v1/auth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ passcode: query, metadata: getClientMetadata() })
+          });
+        }
 
         const data = await response.json();
 
