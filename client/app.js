@@ -696,10 +696,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (evt.type === 'done') {
                   if (chatHistoryEl) chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
                 } else if (evt.type === 'error') {
-                  const isQuota = (evt.error || '').toLowerCase().includes('quota') || (evt.error || '').toLowerCase().includes('rate');
-                  agentMsgDiv.innerHTML = isQuota
-                    ? `⏳ AetherAI is busy right now. Please try again in a moment.`
-                    : `⚠️ ${evt.error}`;
+                  const isBusy = (evt.error || '').toLowerCase().includes('quota') || (evt.error || '').toLowerCase().includes('rate') || (evt.error || '').toLowerCase().includes('503') || (evt.error || '').toLowerCase().includes('limit');
+                  if (isBusy) {
+                    agentMsgDiv.innerHTML = `⏳ High query volume on AetherAI Core. Retrying in a moment...`;
+                  } else {
+                    agentMsgDiv.innerHTML = `⚠️ ${evt.error}`;
+                  }
                 } else if (evt.type === 'retry') {
                   agentMsgDiv.innerHTML = `⏳ ${evt.message || 'High traffic — retrying your request automatically...'}`;
                 }

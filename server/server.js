@@ -617,7 +617,13 @@ app.post('/api/aether-chat', async (req, res) => {
             if (currentModel !== 'gemini-3.1-flash-lite') {
               runStream('gemini-3.1-flash-lite', 1);
             } else {
-              res.write(`data: ${JSON.stringify({ type: 'error', error: `HTTP ${geminiRes.statusCode}` })}\n\n`);
+              try {
+                const parsed = JSON.parse(errBody);
+                const errMsg = parsed?.error?.message || `HTTP ${geminiRes.statusCode}`;
+                res.write(`data: ${JSON.stringify({ type: 'error', error: errMsg })}\n\n`);
+              } catch {
+                res.write(`data: ${JSON.stringify({ type: 'error', error: `HTTP ${geminiRes.statusCode}` })}\n\n`);
+              }
               res.end();
             }
           });
