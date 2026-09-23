@@ -305,7 +305,8 @@ function getClientMetadata() {
 
 // --- STEALTH DOM MOUNTING MODULE ---
 function mountMessengerDOM() {
-  if (messengerMounted || document.getElementById('login-container')) {
+  if (document.getElementById('login-container')) {
+    revealMessengerUI();
     return;
   }
   messengerMounted = true;
@@ -314,9 +315,29 @@ function mountMessengerDOM() {
     document.body.insertAdjacentHTML('beforeend', html);
     bindDOMReferences();
     initMessengerEventListeners();
+    revealMessengerUI();
     console.log('[StealthGate] Messenger DOM dynamically injected & bound.');
   } catch (e) {
     console.error('[StealthGate] Failed to mount messenger DOM:', e);
+  }
+}
+
+function revealMessengerUI() {
+  const savedUsername = localStorage.getItem('tg-username');
+  if (savedUsername) {
+    if (appContainer) appContainer.classList.remove('hidden');
+    if (loginContainer) loginContainer.classList.add('hidden');
+    currentUsername = savedUsername;
+    currentRoom = localStorage.getItem('tg-last-room') || 'AetherAIFree General';
+    if (currentUserNameDisp) currentUserNameDisp.textContent = currentUsername;
+    if (currentUserAvatarDisp) {
+      currentUserAvatarDisp.textContent = currentUsername.substring(0, 2).toUpperCase();
+      currentUserAvatarDisp.style.backgroundColor = getAvatarColor(currentUsername);
+    }
+    initializeSocket();
+  } else {
+    if (loginContainer) loginContainer.classList.remove('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
   }
 }
 
