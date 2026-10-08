@@ -4468,3 +4468,11 @@ body, html {
   }
 }
 
+/* Screen Share Display Optimization across all devices (Desktop, Tablets & Mobile) */
+.remote-video-feed.screen-sharing-mode,
+.conf-video-tile.screen-sharing-mode video,
+.local-video-pip.screen-sharing-mode {
+  object-fit: contain !important;
+  background: #000000 !important;
+}
+

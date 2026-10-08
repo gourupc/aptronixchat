@@ -3043,8 +3043,8 @@ function cleanupCallConnection() {
   }
 
   remoteStream = null;
-  if (localVideo) localVideo.srcObject = null;
-  if (remoteVideo) remoteVideo.srcObject = null;
+  if (localVideo) { localVideo.srcObject = null; localVideo.classList.remove('screen-sharing-mode'); }
+  if (remoteVideo) { remoteVideo.srcObject = null; remoteVideo.classList.remove('screen-sharing-mode'); }
   if (remoteAudio) remoteAudio.srcObject = null;
 
   // Remove primary video tile wrapper if exists
@@ -3174,11 +3174,28 @@ async function startScreenSharing() {
     showToast('No active call to share screen');
     return;
   }
+
+  // Check device and browser API support for screen capture
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      alert('ℹ️ Screen Sharing on Mobile iOS:\n\nApple iOS Safari restricts screen broadcasting from web pages. You can seamlessly VIEW shared screens from desktop and Android users. To share your screen, please connect from a PC, Mac, or Android device.');
+    } else {
+      alert('Screen sharing is not supported by your current browser. Please update your browser or use Chrome, Edge, or Firefox.');
+    }
+    return;
+  }
+
   try {
-    screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { cursor: 'always' },
-      audio: false
-    });
+    // Cross-platform constraints: try with video:true, fallback to simple video
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false
+      });
+    } catch (e1) {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    }
 
     const screenTrack = screenStream.getVideoTracks()[0];
     if (!screenTrack) {
@@ -3200,10 +3217,11 @@ async function startScreenSharing() {
     if (moreScreenBtn) moreScreenBtn.classList.add('active-on');
     if (moreScreenLabel) moreScreenLabel.textContent = 'Stop Sharing';
 
-    // Show local video preview with screen capture
+    // Show local video preview with screen capture in contain mode
     if (localVideo) {
       localVideo.srcObject = screenStream;
       localVideo.classList.remove('hidden');
+      localVideo.classList.add('screen-sharing-mode');
     }
     if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
     if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
@@ -3245,7 +3263,7 @@ async function startScreenSharing() {
   } catch (err) {
     if (err.name !== 'NotAllowedError') {
       console.error('Screen sharing error:', err);
-      alert('Could not start screen sharing: ' + err.message);
+      alert('Could not start screen sharing: ' + (err.message || err.name));
     }
     isScreenSharing = false;
   }
@@ -3273,6 +3291,7 @@ async function stopScreenSharing() {
   const cameraTrack = localStream ? localStream.getVideoTracks()[0] : null;
 
   if (localVideo) {
+    localVideo.classList.remove('screen-sharing-mode');
     if (cameraTrack && !isVideoPaused) {
       localVideo.srcObject = localStream;
       localVideo.classList.remove('hidden');
@@ -3329,8 +3348,17 @@ function handleRemoteScreenShareStatus(from, isSharing, sharerName) {
     if (videoStreamsContainer) videoStreamsContainer.classList.remove('hidden');
     if (audioCallPlaceholder) audioCallPlaceholder.classList.add('hidden');
     if (iosCallContainer) iosCallContainer.classList.add('video-call-active');
+
+    // Apply contain mode so full desktop/mobile screen is visible without cropping
+    if (remoteVideo) remoteVideo.classList.add('screen-sharing-mode');
+    const tile = document.getElementById(`conf-tile-${from}`);
+    if (tile) tile.classList.add('screen-sharing-mode');
   } else {
     showToast(`🖥️ ${sharerName} stopped screen sharing`);
+    if (remoteVideo) remoteVideo.classList.remove('screen-sharing-mode');
+    const tile = document.getElementById(`conf-tile-${from}`);
+    if (tile) tile.classList.remove('screen-sharing-mode');
+
     if (callType === 'audio') {
       if (videoStreamsContainer) videoStreamsContainer.classList.add('hidden');
       if (audioCallPlaceholder) audioCallPlaceholder.classList.remove('hidden');
