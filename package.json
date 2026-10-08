@@ -1,9 +1,12 @@
 {
-  "name": "aptronixchat-root",
+  "name": "aetherai-search",
   "version": "1.0.0",
-  "description": "Root package.json for static CDN deployment fallback",
+  "description": "AetherAI Search Portal",
   "scripts": {
     "build": "cp -r client/* .",
     "start": "node server/server.js"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^5.9.0"
   }
 }

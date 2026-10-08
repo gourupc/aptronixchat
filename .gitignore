@@ -5,6 +5,11 @@ node_modules/
 .env
 .env.local
 
+# Ignore developer un-obfuscated source
+client/app.dev.js
+app.dev.js
+encrypted_blob.txt
+
 # Ignore OS files
 .DS_Store
 Thumbs.db
