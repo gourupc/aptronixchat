@@ -1,10 +1,10 @@
-﻿// ----------------------------------------------------
-// TELEGRAM CLONE WEB-SOCKET CLIENT CONTROLLER
-// ----------------------------------------------------
+﻿
+
+
 
 // Server Configuration - Auto Detect Local vs Remote
 const DEV_SERVER_URL = 'http://localhost:3000';
-// USER ACTION: Paste your deployed free-tier backend URL (e.g., Render/Glitch) here
+
 const PROD_SERVER_URL = 'https://aptronixchat.onrender.com'; 
 
 const SOCKET_URL = (
@@ -36,10 +36,10 @@ try {
 
 let socket = null;
 
-// ==========================================================================
-// STEALTH ZERO-LEAK DYNAMIC DOM MOUNTING SYSTEM
-// Messenger DOM is constructed in-memory ONLY post authentication!
-// ==========================================================================
+
+
+
+
 // Obfuscated Base64 Messenger DOM Payload (Zero Plaintext Keywords)
 // XOR Encrypted Binary Payload (Zero Plaintext Keywords / Zero Base64 strings)
 const STEALTH_CIPHER_KEY = "AetherAISearchSecurityKey2026";
@@ -195,7 +195,7 @@ let typingTimeout = null;
 let isTypingState = false;
 let activeTypingUsers = new Set();
 
-// --- Select DOM Elements ---
+
 const loginContainer = document.getElementById('login-container');
 const loginForm = document.getElementById('login-form');
 const usernameInput = document.getElementById('username');
@@ -212,7 +212,7 @@ const searchInput = document.getElementById('search-input');
 const themeToggleBtn = document.getElementById('theme-toggle');
 const logoutBtn = document.getElementById('logout-btn');
 
-// Chat Area Elements
+
 const activeRoomTitle = document.getElementById('active-room-title');
 const roomMembersCount = document.getElementById('room-members-count');
 const messagesContainer = document.getElementById('messages-container');
@@ -225,7 +225,7 @@ const mobileBackBtn = document.getElementById('mobile-back-btn');
 const emojiBtn = document.getElementById('emoji-btn');
 const notificationSound = document.getElementById('notification-sound');
 
-// File Upload Elements
+
 const attachBtn = document.getElementById('attach-btn');
 const fileInput = document.getElementById('file-input');
 const uploadProgressContainer = document.getElementById('upload-progress-container');
@@ -234,7 +234,7 @@ const uploadProgressBar = document.getElementById('upload-progress-bar');
 const cancelUploadBtn = document.getElementById('cancel-upload-btn');
 let currentUploadXHR = null;
 
-// Self-Destruct & Calling Header Elements
+
 const selfDestructControl = document.getElementById('self-destruct-control');
 const selfDestructBtn = document.getElementById('self-destruct-btn');
 const selfDestructBadge = document.getElementById('self-destruct-badge');
@@ -243,7 +243,7 @@ const headerCallActions = document.getElementById('header-call-actions');
 const headerAudioCallBtn = document.getElementById('header-audio-call-btn');
 const headerVideoCallBtn = document.getElementById('header-video-call-btn');
 
-// Voice message elements
+
 const voiceRecordPanel = document.getElementById('voice-record-panel');
 const voiceRecordTimer = document.getElementById('voice-record-timer');
 const voiceCancelBtn = document.getElementById('voice-cancel-btn');
@@ -412,9 +412,9 @@ function getClientMetadata() {
   };
 }
 
-// --- Initialization & Theme Setup ---
+
 document.addEventListener('DOMContentLoaded', () => {
-  // --- iOS Safari Double-Tap Zoom Prevention ---
+  
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (e) => {
     const target = e.target;
@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // --- Stealth AI Search Portal Gate (AetherAI Mask) ---
+  
   const securityMaskGate = document.getElementById('security-mask-gate');
   const aiSearchInput = document.getElementById('ai-search-input');
   const aiSearchBtn = document.getElementById('ai-search-btn');
@@ -758,7 +758,7 @@ mountMessengerDOM();
     });
   }
 
-  // --- Console Voice Speech-to-Text Input (SpeechRecognition) ---
+  
   const consoleMicBtn = document.querySelector('.btn-mic');
   let isConsoleListening = false;
   let consoleRecognition = null;
@@ -835,7 +835,7 @@ mountMessengerDOM();
       }
     });
   }
-  // --- Console Photo Upload Options ---
+  
   if (consolePlusBtn && consoleFileInput) {
     consolePlusBtn.addEventListener('click', () => {
       consoleFileInput.click();
@@ -943,7 +943,7 @@ mountMessengerDOM();
     usernameInput.value = savedUsername;
   }
 
-  // --- Admin Email Alerts Toggle ---
+  
   const adminEmailToggleBtn = document.getElementById('admin-email-toggle-btn');
   const adminEmailIconSvg = document.getElementById('admin-email-icon-svg');
   let emailAlertsEnabled = true;
@@ -1002,7 +1002,7 @@ mountMessengerDOM();
 });
 
 
-// --- Theme Toggle Action ---
+
 themeToggleBtn.addEventListener('click', () => {
   if (document.body.classList.contains('dark-theme')) {
     document.body.classList.replace('dark-theme', 'light-theme');
@@ -1033,7 +1033,7 @@ function updateThemeIcon(theme) {
   }
 }
 
-// --- Login Form Submission ---
+
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   
@@ -1058,7 +1058,7 @@ loginForm.addEventListener('submit', (e) => {
   initializeSocket();
 });
 
-// --- Socket.IO Event Handlers ---
+
 function initializeSocket() {
   // Switch Screen immediately to provide visual feedback and enter the messenger layout
   loginContainer.classList.add('hidden');
@@ -1129,7 +1129,7 @@ function initializeSocket() {
     cleanupCallConnection(); // End calls if connection drops
   });
 
-  // --- WebRTC Calling Socket Listeners ---
+  
   socket.on('incoming-call', async ({ from, username, offer, type }) => {
     console.log(`Incoming ${type} call from ${username}`);
     
@@ -1390,7 +1390,7 @@ function initializeSocket() {
     });
   });
 
-  // Self destruct timer config events listener
+  
   socket.on('self-destruct-timer-updated', ({ room, duration }) => {
     if (room !== currentRoom) return;
     activeSelfDestructDuration = duration;
@@ -1487,7 +1487,7 @@ function initializeSocket() {
              </svg>
            </button>`;
       } else if (!isLobby) {
-        // Delete button for public custom channel
+        
         deleteButtonHTML = `<button type="button" class="btn-room-delete delete-room-action" data-room="${room}" title="Delete Channel">
              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
@@ -1564,7 +1564,7 @@ function initializeSocket() {
     }
   });
 
-  // --- Telegram features socket listeners ---
+  
 
   socket.on('message-edited', ({ room, messageId, newText }) => {
     if (room !== currentRoom) return;
@@ -1633,7 +1633,7 @@ function initializeSocket() {
   });
 }
 
-// --- Message Rendering Helpers ---
+
 function renderMessage(msg) {
   if (msg.system) {
     const div = document.createElement('div');
@@ -1735,7 +1735,7 @@ function renderMessage(msg) {
   bubble.className = 'bubble';
   bubble.dataset.msgId = msg.id;
 
-  // Forwarded Label
+  
   if (msg.forwarded) {
     const fwd = document.createElement('span');
     fwd.className = 'forwarded-badge';
@@ -1743,7 +1743,7 @@ function renderMessage(msg) {
     bubble.appendChild(fwd);
   }
 
-  // Reply Quoted block
+  
   if (msg.replyTo) {
     const quote = document.createElement('div');
     quote.className = 'reply-quote';
@@ -1879,7 +1879,7 @@ function renderMessage(msg) {
   messagesContainer.appendChild(wrapper);
 }
 
-// --- Send Message Action ---
+
 messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
@@ -1977,7 +1977,7 @@ function updateTypingIndicator() {
   typingIndicatorBar.classList.remove('hidden');
 }
 
-// --- Channel Switching ---
+
 roomsList.querySelectorAll('.room-item').forEach(item => {
   item.addEventListener('click', () => {
     const room = item.getAttribute('data-room');
@@ -2021,7 +2021,7 @@ mobileBackBtn.addEventListener('click', () => {
   document.body.classList.remove('active-chat');
 });
 
-// --- Search Filter for Sidebar ---
+
 searchInput.addEventListener('input', (e) => {
   const query = e.target.value.toLowerCase().trim();
   roomsList.querySelectorAll('.room-item').forEach(item => {
@@ -2034,7 +2034,7 @@ searchInput.addEventListener('input', (e) => {
   });
 });
 
-// --- Telegram Full Categorized Emoji Picker ---
+
 let currentEmojiCat = 'recent';
 EMOJI_CATEGORIES.recent = recentEmojis;
 
@@ -2100,7 +2100,7 @@ document.addEventListener('click', (e) => {
 });
 
 
-// --- File Upload & Sharing Event Handlers ---
+
 attachBtn.addEventListener('click', () => {
   fileInput.click();
 });
@@ -2194,7 +2194,7 @@ cancelUploadBtn.addEventListener('click', () => {
   }
 });
 
-// --- Logout ---
+
 logoutBtn.addEventListener('click', () => {
   if (socket) {
     socket.disconnect();
@@ -2211,8 +2211,8 @@ logoutBtn.addEventListener('click', () => {
   loginContainer.classList.remove('hidden');
 });
 
-// --- Utility Functions ---
-// --- Professional Scroll Management (WhatsApp / Telegram style) ---
+
+
 const scrollBtn = document.getElementById('scroll-to-bottom-btn');
 const scrollBadge = document.getElementById('scroll-unread-badge');
 let unreadScrollCount = 0;
@@ -2251,7 +2251,7 @@ function smartScrollToBottom() {
   if (isAtBottom()) {
     messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
   } else {
-    // User is reading old messages — just increment badge
+    
     unreadScrollCount++;
     if (scrollBadge) {
       scrollBadge.textContent = unreadScrollCount > 99 ? '99+' : unreadScrollCount;
@@ -2333,7 +2333,7 @@ async function getMediaStreamWithFallback(type) {
         { audio: true, video: false }
       ]
     : [
-        // Voice call
+        
         { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
         { audio: true }
       ];
@@ -2368,7 +2368,7 @@ async function getMediaStreamWithFallback(type) {
   return new MediaStream();
 }
 
-// --- WebRTC Peer-to-Peer Calling Logic ---
+
 async function initiateUserCall(toSocketId, peerName, type) {
   if (peerConnection || localStream) {
     alert('You are already in an active calling session.');
@@ -2856,7 +2856,7 @@ async function processQueuedIceCandidates() {
 
 
 
-// --- Call Screen UI Selectors & DTMF Audio Synthesizer ---
+
 const iosAudioBtn      = document.getElementById('ios-audio-btn');
 const iosFacetimeBtn   = document.getElementById('ios-facetime-btn');
 const iosFacetimeLabel = document.getElementById('ios-facetime-label');
@@ -3081,7 +3081,7 @@ function cleanupCallConnection() {
   callType = null;
 }
 
-// Call Timer Helpers
+
 function startCallTimer() {
   stopCallTimer();
   callDurationSeconds = 0;
@@ -3120,7 +3120,7 @@ if (iosMoreBtn) iosMoreBtn.addEventListener('click', () => {
   }
 });
 
-// --- Merge Call Button ---
+
 if (iosMergeBtn) iosMergeBtn.addEventListener('click', openMergeCallPanel);
 if (closeMergePanelBtn) closeMergePanelBtn.addEventListener('click', closeMergePanel);
 if (cancelMergeBtn) cancelMergeBtn.addEventListener('click', closeMergePanel);
@@ -3221,7 +3221,7 @@ document.querySelectorAll('.dial-key').forEach(keyBtn => {
   });
 });
 
-// --- Microphone Permission Handling & Re-grant Logic ---
+
 const micPermissionModal = document.getElementById('mic-permission-modal');
 const grantMicPermBtn = document.getElementById('grant-mic-perm-btn');
 const closeMicPermBtn = document.getElementById('close-mic-perm-btn');
@@ -3593,7 +3593,7 @@ headerVideoCallBtn.addEventListener('click', () => {
 });
 
 
-// Self-Destruct Timer Interactions
+
 selfDestructBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   selfDestructDropdown.classList.toggle('hidden');
@@ -3615,7 +3615,7 @@ selfDestructDropdown.addEventListener('click', (e) => {
   });
 });
 
-// --- Voice Recording Lifecycle ---
+
 micRecordBtn.addEventListener('click', startVoiceRecording);
 voiceCancelBtn.addEventListener('click', () => stopVoiceRecording(false));
 voiceSendBtn.addEventListener('click', () => stopVoiceRecording(true));
@@ -3745,7 +3745,7 @@ function updateVoiceRecordTimer() {
   }
 }
 
-// --- DM Helper Functions ---
+
 function getDMRoomName(userA, userB) {
   const sorted = [userA, userB].sort();
   return `dm:${sorted[0]}:${sorted[1]}`;
@@ -3927,7 +3927,7 @@ function switchChatRoom(roomName) {
   }
 }
 
-// --- Create Custom Channel Action ---
+
 const createRoomBtn = document.getElementById('create-room-btn');
 if (createRoomBtn) {
   createRoomBtn.addEventListener('click', () => {
@@ -3946,7 +3946,7 @@ if (createRoomBtn) {
   });
 }
 
-// --- Create Secret Code Room ---
+
 const createCodeRoomBtn = document.getElementById('create-code-room-btn');
 if (createCodeRoomBtn) {
   createCodeRoomBtn.addEventListener('click', () => {
@@ -3971,7 +3971,7 @@ if (createCodeRoomBtn) {
   });
 }
 
-// --- Join Secret Code Room ---
+
 const joinCodeRoomBtn = document.getElementById('join-code-room-btn');
 if (joinCodeRoomBtn) {
   joinCodeRoomBtn.addEventListener('click', () => {
@@ -4002,9 +4002,9 @@ if (joinCodeRoomBtn) {
   });
 }
 
-// ============================================================
+
 // TELEGRAM FEATURES: Context Menu, Reply, Edit, Delete, React
-// ============================================================
+
 
 const msgContextMenu = document.getElementById('msg-context-menu');
 const replyPreviewBar = document.getElementById('reply-preview-bar');
@@ -4028,7 +4028,7 @@ function showContextMenu(e, msgData, isOwn) {
 document.addEventListener('click', () => msgContextMenu.classList.add('hidden'));
 msgContextMenu.addEventListener('click', (e) => e.stopPropagation());
 
-// Reply message trigger
+
 function startReply(msg) {
   activeReplyMsg = msg;
   activeEditMsgId = null;
@@ -4067,7 +4067,7 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
   micRecordBtn.classList.remove('hidden');
 });
 
-// Delete message manual trigger
+
 function deleteMessageForEveryone(msgId) {
   if (!confirm('Delete this message for everyone?')) return;
   socket.emit('delete-message-manual', { room: currentRoom, messageId: msgId });
@@ -4078,12 +4078,12 @@ function sendReaction(msgId, emoji) {
   socket.emit('react-message', { room: currentRoom, messageId: msgId, emoji });
 }
 
-// Pin a message
+
 function pinMessage(msgId) {
   socket.emit('pin-message', { room: currentRoom, messageId: msgId });
 }
 
-// Forward modal and actions
+
 let forwardMsgId = null;
 function showForwardModal(msgId) {
   forwardMsgId = msgId;
@@ -4148,7 +4148,7 @@ document.getElementById('ctx-delete').addEventListener('click', () => {
   if (contextMenuTargetMsg) deleteMessageForEveryone(contextMenuTargetMsg.id);
 });
 
-// Pin Banner close/unpin action
+
 document.getElementById('unpin-btn').addEventListener('click', (e) => {
   e.stopPropagation();
   if (pinnedMessageBar.dataset.msgId) {
@@ -4156,7 +4156,7 @@ document.getElementById('unpin-btn').addEventListener('click', (e) => {
   }
 });
 
-// --- 4. Admin Portal Functionality ---
+
 function openAdminPortal() {
   const adminPortalModal = document.getElementById('admin-portal-modal');
   const adminCurrentPasscodeTxt = document.getElementById('admin-current-passcode-txt');
@@ -4323,9 +4323,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-/* ==========================================================================
-   WHATSAPP / GOOGLE MEET VIDEO CALL & CAMERA SWITCH LOGIC
-   ========================================================================== */
+
 currentFacingMode = 'user';
 
 async function flipCamera() {
