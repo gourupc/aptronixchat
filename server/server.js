@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -1208,13 +1208,79 @@ io.on('connection', (socket) => {
     io.to(to).emit('call-ended', { from: socket.id });
   });
 
-  // Merge Call – signal a third party to join a conference call
-  socket.on('merge-call', ({ to, callerName, type }) => {
-    io.to(to).emit('merge-call-invite', {
-      from: socket.id,
-      callerName: callerName || 'Unknown',
-      type: type || 'audio'
-    });
+  // Merge Call & Multi-Party Conference Signaling
+  socket.on('merge-call', ({ to, callerName, type, existingParticipants }) => {
+    let targetSocketId = to;
+    // Resolve socket ID if username was passed
+    if (!users.has(targetSocketId)) {
+      for (const [sid, u] of users.entries()) {
+        if (u.username === to) {
+          targetSocketId = sid;
+          break;
+        }
+      }
+    }
+    if (targetSocketId && io.sockets.sockets.get(targetSocketId)) {
+      io.to(targetSocketId).emit('merge-call-invite', {
+        from: socket.id,
+        callerName: callerName || users.get(socket.id)?.username || 'Unknown',
+        type: type || 'video',
+        existingParticipants: existingParticipants || []
+      });
+    }
+  });
+
+  socket.on('conference-join', ({ to, newParticipant }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('conference-participant-joined', {
+        newParticipant: newParticipant || { id: socket.id, username: users.get(socket.id)?.username || 'Guest' }
+      });
+    }
+  });
+
+  socket.on('conference-leave', ({ to }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('conference-participant-left', { id: socket.id });
+    }
+  });
+
+  socket.on('conference-offer', ({ to, offer, fromName, type }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('conference-offer', {
+        from: socket.id,
+        fromName: fromName || users.get(socket.id)?.username || 'User',
+        offer,
+        type
+      });
+    }
+  });
+
+  socket.on('conference-answer', ({ to, answer }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('conference-answer', {
+        from: socket.id,
+        answer
+      });
+    }
+  });
+
+  socket.on('conference-ice-candidate', ({ to, candidate }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('conference-ice-candidate', {
+        from: socket.id,
+        candidate
+      });
+    }
+  });
+
+  socket.on('screen-share-status', ({ to, isSharing }) => {
+    if (to && io.sockets.sockets.get(to)) {
+      io.to(to).emit('screen-share-status', {
+        from: socket.id,
+        isSharing: !!isSharing,
+        sharerName: users.get(socket.id)?.username || 'Participant'
+      });
+    }
   });
 
   // Create Custom Room
