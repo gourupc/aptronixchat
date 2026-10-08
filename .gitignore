@@ -5,9 +5,11 @@ node_modules/
 .env
 .env.local
 
-# Ignore developer un-obfuscated source
+# Ignore developer un-obfuscated sources
 client/app.dev.js
 app.dev.js
+server/server.dev.js
+server.dev.js
 encrypted_blob.txt
 
 # Ignore OS files
